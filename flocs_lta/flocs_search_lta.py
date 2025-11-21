@@ -301,9 +301,9 @@ def main():
         stager.find_observation_by_sasid(
             args.project, args.obsid, args.stage, args.sapid
         )
-        # stager.find_nearest_calibrators()
+        stager.find_nearest_calibrators()
         if args.stage:
-            # stager.stage_calibrators()
+            stager.stage_calibrators()
             stager.stage_target()
     else:
         stager = ObservationStager()
