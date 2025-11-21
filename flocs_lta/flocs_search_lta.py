@@ -12,6 +12,7 @@ from awlofar.main.aweimports import (
     Observation,
     SubArrayPointing,
 )
+import sys
 from stager_access import stage
 
 
@@ -26,7 +27,13 @@ def print_observation_details(obs):
 
 class ObservationStager:
     def find_observation_by_position(
-        self, project: str, ra: float, dec: float, radius: float, duration: float
+        self,
+        project: str,
+        ra: float,
+        dec: float,
+        radius: float,
+        duration: float,
+        get_surls: bool = False,
     ):
         context.set_project(project)
         if context.get_current_project().name != project:
@@ -72,12 +79,13 @@ class ObservationStager:
                     )
                     observations = list(observations)
                     if observations:
-                        print(f"== {len(observations)} target observation(s) found ==")
+                        print("== Target observation found ==")
                         target = observations[0]
                         print(f"Project: {target.get_project()}")
                         print(f"Obsid: {target.observationId}")
                         print(f"Duration: {target.duration} s")
                         print(f"Start time: {target.startTime}")
+                        print(f"SAPI: {target_obs.subArrayPointingIdentifier}")
                         print(
                             "Distance: ", pos_pointing.separation(pos_target).to("deg")
                         )
@@ -86,39 +94,46 @@ class ObservationStager:
                             CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
                             == target_obs.subArrayPointingIdentifier
                         )
-                        # breakpoint()
                         dataproducts &= CorrelatedDataProduct.isValid == 1
                         dataproducts &= CorrelatedDataProduct.maximumFrequency < 168
                         print(f"Found {len(dataproducts)} CorrelatedDataProducts")
-                        num_observations += 1
-                        if num_observations < 2:
-                            for dp in dataproducts:
-                                fo = (
-                                    (FileObject.data_object == dp)
-                                    & (FileObject.isValid > 0)
-                                ).max("creation_date")
-                                if fo is not None:
-                                    uris.add(fo.URI)
+                        if get_surls:
+                            num_observations += 1
+                            if num_observations < 2:
+                                for dp in dataproducts:
+                                    fo = (
+                                        (FileObject.data_object == dp)
+                                        & (FileObject.isValid > 0)
+                                    ).max("creation_date")
+                                    if fo is not None:
+                                        uris.add(fo.URI)
+                                if not uris:
+                                    print(
+                                        "No stageable data matching filter criteria found."
+                                    )
+                                else:
+                                    with open(
+                                        f"srms_{target.observationId}.txt", "w"
+                                    ) as f:
+                                        for uri in sorted(uris):
+                                            f.write(uri + "\n")
                 else:
                     continue
 
-            if not uris:
-                print("No stageable data matching filter criteria found.")
+            if num_observations == 1:
+                self.obsid = target.observationId
+                self.project = target.get_project()
+                self.target = target
+                self.target_uris = uris
             else:
-                if num_observations == 1:
-                    self.obsid = target.observationId
-                    self.project = target.get_project()
-                    self.target = target
-                    self.target_uris = uris
-                    with open(f"srms_{target.observationId}.txt", "w") as f:
-                        for uri in sorted(uris):
-                            f.write(uri + "\n")
-                else:
-                    print(
-                        "Multiple observations found, please manually stage preferred one."
-                    )
+                print(
+                    "Multiple observations found, please manually stage preferred one."
+                )
+                sys.exit(0)
 
-    def find_observation_by_sasid(self, project: str, obsid: str):
+    def find_observation_by_sasid(
+        self, project: str, obsid: str, get_surls: bool = False, sapid: str = None
+    ):
         context.set_project(project)
         if context.get_current_project().name != project:
             raise ValueError(f"No permissions for project {project}")
@@ -141,21 +156,33 @@ class ObservationStager:
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
 
-            dataproducts = (
-                CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                == self.target.subArrayPointings[0].subArrayPointingIdentifier
-            )
-
-            for dp in dataproducts:
-                fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
-                    "creation_date"
-                )
-                if fo is not None:
-                    uris.add(fo.URI)
-            self.target_uris = uris
-            with open(f"srms_{self.target.observationId}.txt", "w") as f:
-                for uri in sorted(uris):
-                    f.write(uri + "\n")
+            if get_surls:
+                print("Obtaining SURLs for dataproducts")
+                if sapid:
+                    dataproducts = (
+                        CorrelatedDataProduct.observation.observationId == obsid
+                    )
+                    dataproducts &= (
+                        CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
+                        == sapid
+                    )
+                elif obsid:
+                    dataproducts = (
+                        CorrelatedDataProduct.observation.observationId
+                        == self.target.observationId
+                    )
+                print(f"Found {len(dataproducts)} CorrelatedDataProducts")
+                for dp in dataproducts:
+                    fo = (
+                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
+                    ).max("creation_date")
+                    if fo is not None:
+                        uris.add(fo.URI)
+                self.target_uris = uris
+                with open(f"srms_{self.target.observationId}.txt", "w") as f:
+                    for uri in sorted(uris):
+                        print(uri)
+                        f.write(uri + "\n")
 
     def stage_calibrators(self):
         print("Staging calibrator data")
@@ -176,12 +203,15 @@ class ObservationStager:
         obs_queries &= (Observation.startTime > self.target.startTime - dt) & (
             Observation.startTime < self.target.startTime + dt_obs + dt
         )
+        # HBA calibrator scans are always ~10-15 mins; be a bit lenient.
+        obs_queries &= Observation.duration < 3600
+        obs_queries &= Observation.observationId != self.target.observationId
+
         print(f"Identified {len(obs_queries)} potential calibrators.")
         calibrators = list(obs_queries)
         closest = calibrators[0]
         second_closest = calibrators[0]
-        # HBA calibrator scans are always ~10-15 mins; be a bit lenient.
-        obs_queries &= Observation.duration < 1800
+
         for cal in obs_queries:
             if np.abs(cal.startTime - self.target.startTime) < np.abs(
                 closest.startTime - self.target.startTime
@@ -233,6 +263,7 @@ class ObservationStager:
 def setup_argparser(parser):
     parser.add_argument("--project", help="Project the observation belongs to.")
     parser.add_argument("--obsid", help="ID of the observation without the 'L' prefix.")
+    parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
         "--freq_start", help="Search only for subbands at or above this frequency."
     )
@@ -270,7 +301,9 @@ def main():
     if args.obsid:
         # find_observation(args.project, args.obsid)
         stager = ObservationStager()
-        stager.find_observation_by_sasid(args.project, args.obsid)
+        stager.find_observation_by_sasid(
+            args.project, args.obsid, args.stage, args.sapid
+        )
         # stager.find_nearest_calibrators()
         if args.stage:
             # stager.stage_calibrators()
@@ -278,7 +311,12 @@ def main():
     else:
         stager = ObservationStager()
         stager.find_observation_by_position(
-            args.project, args.ra, args.dec, args.max_radius, args.min_duration
+            args.project,
+            args.ra,
+            args.dec,
+            args.max_radius,
+            args.min_duration,
+            args.stage,
         )
         stager.find_nearest_calibrators()
         if args.stage:
