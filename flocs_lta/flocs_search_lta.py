@@ -159,9 +159,7 @@ class ObservationStager:
             if get_surls:
                 print("Obtaining SURLs for dataproducts")
                 if sapid:
-                    dataproducts = (
-                        CorrelatedDataProduct.observation.observationId == obsid
-                    )
+                    dataproducts = CorrelatedDataProduct.isValid == 1
                     dataproducts &= (
                         CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
                         == sapid
@@ -181,7 +179,6 @@ class ObservationStager:
                 self.target_uris = uris
                 with open(f"srms_{self.target.observationId}.txt", "w") as f:
                     for uri in sorted(uris):
-                        print(uri)
                         f.write(uri + "\n")
 
     def stage_calibrators(self):
