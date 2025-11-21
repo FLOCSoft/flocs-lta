@@ -137,6 +137,26 @@ class ObservationStager:
             self.project = self.target.get_project()
             print_observation_details(self.target)
 
+            uris = set()
+            self.obsid = self.target.observationId
+            self.project = self.target.get_project()
+
+            dataproducts = (
+                CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
+                == self.target.subArrayPointings[0].subArrayPointingIdentifier
+            )
+
+            for dp in dataproducts:
+                fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
+                    "creation_date"
+                )
+                if fo is not None:
+                    uris.add(fo.URI)
+            self.target_uris = uris
+            with open(f"srms_{self.target.observationId}.txt", "w") as f:
+                for uri in sorted(uris):
+                    f.write(uri + "\n")
+
     def stage_calibrators(self):
         print("Staging calibrator data")
         id = stage(list(self.calibrator_uris))
@@ -239,6 +259,7 @@ def setup_argparser(parser):
         help="Stage the data after finding it.",
     )
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Find a target observation in the LTA and its closest calibrator scans."
@@ -250,9 +271,9 @@ def main():
         # find_observation(args.project, args.obsid)
         stager = ObservationStager()
         stager.find_observation_by_sasid(args.project, args.obsid)
-        stager.find_nearest_calibrators()
+        # stager.find_nearest_calibrators()
         if args.stage:
-            stager.stage_calibrators()
+            # stager.stage_calibrators()
             stager.stage_target()
     else:
         stager = ObservationStager()
@@ -263,6 +284,7 @@ def main():
         if args.stage:
             stager.stage_calibrators()
             stager.stage_target()
+
 
 if __name__ == "__main__":
     main()
