@@ -1,2 +1,5 @@
 *.egg-info
+*.log
+srm*.txt
+**/__pycache__
 build
