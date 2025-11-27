@@ -158,6 +158,7 @@ class ObservationStager:
             self.target = observations[0]
             if type(self.target) is AveragingPipeline:
                 self.target = self.target.sourceData[0].observation
+                sapid = self.target.sourceData[0].subArrayPointingIdentifier
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
             print_observation_details(self.target)
@@ -177,7 +178,7 @@ class ObservationStager:
                 elif obsid and (not sapid):
                     dataproducts = (
                         CorrelatedDataProduct.observation.observationId
-                        == self.target.observationId
+                        == obsid
                     )
                 print(f"Found {len(dataproducts)} CorrelatedDataProducts")
                 for dp in dataproducts:
