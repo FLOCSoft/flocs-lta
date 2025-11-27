@@ -27,7 +27,13 @@ class Downloader:
         self.macaroons = macaroons
         self.urls = urls
 
-    def download_url(self, url: str, outdir: str = "", extract: bool = False, verification: str = "basic"):
+    def download_url(
+        self,
+        url: str,
+        outdir: str = "",
+        extract: bool = False,
+        verification: str = "basic",
+    ):
         """Download the MS pointed to by the URL.
 
         Args:
@@ -38,7 +44,13 @@ class Downloader:
             RuntimeError: when encountering an unknown LTA site.
         """
         site = None
-        outname = os.path.join(os.path.abspath(outdir), url.split("/")[-1])
+        sasid = url.split("/")[-1].split("_")[0]
+        outdir_full = os.path.join(os.path.abspath(outdir), sasid)
+        try:
+            os.mkdir(outdir_full)
+        except FileExistsError:
+            pass
+        outname = os.path.join(outdir_full, url.split("/")[-1])
         if "juelich" in url:
             site = LTASite.JUELICH
         if "psnc" in url:
@@ -59,7 +71,8 @@ class Downloader:
 
             if verification == "basic":
                 import casacore.tables as ct
-                ms = outname.split("MS")[0]+"MS"
+
+                ms = outname.split("MS")[0] + "MS"
                 try:
                     # strip the hash + tar extension
                     ct.table(ms)
@@ -67,14 +80,18 @@ class Downloader:
                 except:
                     print(f"{ms} is not a valid MeasurementSet")
 
-    def download_all(self, max_workers: int, extract: bool = False, verification: str = "basic"):
+    def download_all(
+        self, max_workers: int, extract: bool = False, verification: str = "basic"
+    ):
         """Download all URLs belonging to the instance.
 
         Args:
             max_workers (int):
         """
         with ProcessPoolExecutor(max_workers=max_workers) as pex:
-            pex.map(self.download_url, self.urls, extract=extract, verification=verification)
+            pex.map(
+                self.download_url, self.urls, extract=extract, verification=verification
+            )
 
 
 def download(
@@ -86,7 +103,10 @@ def download(
         Optional[bool], Option(help="Extract the tarball after downloading.")
     ] = True,
     verification: Annotated[
-        Optional[Literal["basic"]], Option(help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball.")
+        Optional[Literal["basic"]],
+        Option(
+            help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
+        ),
     ] = None,
 ):
     """Download data from the LTA that was staged via the StageIt service."""
