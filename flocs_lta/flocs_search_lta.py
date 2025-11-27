@@ -7,6 +7,7 @@ import numpy as np
 from astropy.coordinates import SkyCoord
 from awlofar.database.Context import context
 from awlofar.main.aweimports import (
+    AveragingPipeline,
     CorrelatedDataProduct,
     FileObject,
     Observation,
@@ -144,6 +145,13 @@ class ObservationStager:
 
         query &= Observation.isValid == 1
         query &= Observation.observationId == obsid
+        if not len(query):
+            if project == "ALL":
+                query = AveragingPipeline.select_all()
+            else:
+                query = AveragingPipeline.select_all().project_only(project)
+            query &= AveragingPipeline.isValid == 1
+            query &= AveragingPipeline.observationId == obsid
         observations = list(query)
         if observations:
             print(f"== {len(observations)} target observation(s) found ==")
@@ -164,7 +172,7 @@ class ObservationStager:
                         CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
                         == sapid
                     )
-                elif obsid:
+                elif obsid and (not sapid):
                     dataproducts = (
                         CorrelatedDataProduct.observation.observationId
                         == self.target.observationId
@@ -259,7 +267,7 @@ class ObservationStager:
 
 def setup_argparser(parser):
     parser.add_argument("--project", help="Project the observation belongs to.")
-    parser.add_argument("--obsid", help="ID of the observation without the 'L' prefix.")
+    parser.add_argument("--sasid", help="ID of the observation without the 'L' prefix.")
     parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
         "--freq_start", help="Search only for subbands at or above this frequency."
@@ -295,11 +303,10 @@ def main():
     setup_argparser(parser)
     args = parser.parse_args()
 
-    if args.obsid:
-        # find_observation(args.project, args.obsid)
+    if args.sasid:
         stager = ObservationStager()
         stager.find_observation_by_sasid(
-            args.project, args.obsid, args.stage, args.sapid
+            args.project, args.sasid, args.stage, args.sapid
         )
         stager.find_nearest_calibrators()
         if args.stage:
