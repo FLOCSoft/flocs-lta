@@ -31,9 +31,7 @@ class Downloader:
     def download_url(
         self,
         url: str,
-        outdir: str = "",
-        extract: bool = False,
-        verification: str = "basic",
+        arguments: tuple[str, bool, str, str],
     ):
         """Download the MS pointed to by the URL.
 
@@ -44,6 +42,7 @@ class Downloader:
         Raises:
             RuntimeError: when encountering an unknown LTA site.
         """
+        url, extract, verify, outdir = arguments
         site = None
         sasid = url.split("/")[-1].split("_")[0]
         outdir_full = os.path.join(os.path.abspath(outdir), sasid)
@@ -91,9 +90,7 @@ class Downloader:
             max_workers (int):
         """
         with ProcessPoolExecutor(max_workers=max_workers) as pex:
-            pex.map(
-                self.download_url, self.urls, extract=extract, verification=verification
-            )
+            pex.map(self.download_url, (self.urls, extract, verification, ""))
 
 
 def download(
@@ -102,14 +99,14 @@ def download(
         int, Option(help="Maximum number of parallel downloads.")
     ] = 1,
     extract: Annotated[
-        Optional[bool], Option(help="Extract the tarball after downloading.")
+        bool, Option(help="Extract the tarball after downloading.")
     ] = True,
     verification: Annotated[
-        Optional[Literal["basic"]],
+        Literal["basic"],
         Option(
             help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
         ),
-    ] = None,
+    ] = "basic",
 ):
     """Download data from the LTA that was staged via the StageIt service."""
     urls = get_webdav_urls_requested(stage_id)
