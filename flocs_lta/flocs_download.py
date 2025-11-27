@@ -90,7 +90,7 @@ class Downloader:
             max_workers (int):
         """
         with ProcessPoolExecutor(max_workers=max_workers) as pex:
-            pex.map(self.download_url, (self.urls, extract, verification, ""))
+            pex.map(self.download_url, [(url, extract, verification, "") for url in self.urls])
 
 
 def download(
