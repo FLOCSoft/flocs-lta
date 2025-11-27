@@ -67,6 +67,7 @@ class Downloader:
         if extract:
             import tarfile
 
+            print(f"Extracting {outname}")
             with tarfile.open(outname, "r") as tarball:
                 tarball.extractall(path=outdir)
 
