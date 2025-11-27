@@ -268,7 +268,7 @@ class ObservationStager:
 
 
 def setup_argparser(parser):
-    parser.add_argument("--project", help="Project the observation belongs to.")
+    parser.add_argument("--project", help="Project the observation belongs to.", default="ALL")
     parser.add_argument("--sasid", help="ID of the observation without the 'L' prefix.")
     parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
