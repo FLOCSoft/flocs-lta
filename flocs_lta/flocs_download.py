@@ -5,7 +5,8 @@ from typing import Iterable
 import typer
 from enum import Enum
 from stager_access import get_macaroons, get_webdav_urls_requested
-from typer import Argument, Option, Optional
+from typing import Optional
+from typer import Argument, Option
 from typing_extensions import Annotated, Literal
 
 # app = typer.Typer(add_completion=False)
