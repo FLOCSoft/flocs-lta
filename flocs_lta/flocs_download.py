@@ -5,11 +5,8 @@ from typing import Iterable
 import typer
 from enum import Enum
 from stager_access import get_macaroons, get_webdav_urls_requested
-from typing import Optional
 from typer import Argument, Option
 from typing_extensions import Annotated, Literal
-
-# app = typer.Typer(add_completion=False)
 
 
 class LTASite(Enum):
@@ -57,6 +54,7 @@ class Downloader:
             site = LTASite.POZNAN
         if not site:
             raise RuntimeError("Unknown LTA site encountered.")
+        # strip the hash + tar extension
         ms = outname.split("MS")[0] + "MS"
         if not os.path.isdir(ms):
             print(
@@ -76,9 +74,16 @@ class Downloader:
                     import casacore.tables as ct
 
                     try:
-                        # strip the hash + tar extension
-                        ct.table(ms)
-                        os.remove(outname)
+                        with ct.table(ms) as tab:
+                            has_dysco = (
+                                tab.getdesc()["DATA"]["dataManagerGroup"] == "DyscoData"
+                            )
+                        if has_dysco:
+                            os.remove(outname)
+                        else:
+                            os.rename(ms, ms + ".nodysco")
+                            os.system(f"DP3 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]")
+                            os.remove(outname)
                     except:
                         print(f"{ms} is not a valid MeasurementSet")
 
@@ -91,7 +96,10 @@ class Downloader:
             max_workers (int):
         """
         with ProcessPoolExecutor(max_workers=max_workers) as pex:
-            pex.map(self.download_url, [(url, extract, verification, "") for url in self.urls])
+            pex.map(
+                self.download_url,
+                [(url, extract, verification, "") for url in self.urls],
+            )
 
 
 def download(
