@@ -42,7 +42,7 @@ class Downloader:
         Raises:
             RuntimeError: when encountering an unknown LTA site.
         """
-        url, extract, verify, outdir = arguments
+        url, extract, verification, outdir = arguments
         site = None
         sasid = url.split("/")[-1].split("_")[0]
         outdir_full = os.path.join(os.path.abspath(outdir), sasid)
@@ -57,29 +57,30 @@ class Downloader:
             site = LTASite.POZNAN
         if not site:
             raise RuntimeError("Unknown LTA site encountered.")
-        print(
-            f"wget --no-clobber --retry-on-http-error 401,500 --check-certificate=off {url}?authz={self.macaroons[site.value]} -O {outname}"
-        )
-        os.system(
-            f"wget --no-clobber --retry-on-http-error 401,500 --check-certificate=off {url}?authz={self.macaroons[site.value]} -O {outname}"
-        )
-        if extract:
-            import tarfile
+        ms = outname.split("MS")[0] + "MS"
+        if not os.path.isdir(ms):
+            print(
+                f"wget --no-clobber --retry-on-http-error 401,500 --check-certificate=off {url}?authz={self.macaroons[site.value]} -O {outname}"
+            )
+            os.system(
+                f"wget --no-clobber --retry-on-http-error 401,500 --check-certificate=off {url}?authz={self.macaroons[site.value]} -O {outname}"
+            )
+            if extract:
+                import tarfile
 
-            print(f"Extracting {outname}")
-            with tarfile.open(outname, "r") as tarball:
-                tarball.extractall(path=outdir)
+                print(f"Extracting {outname}")
+                with tarfile.open(outname, "r") as tarball:
+                    tarball.extractall(path=outdir_full)
 
-            if verification == "basic":
-                import casacore.tables as ct
+                if verification == "basic":
+                    import casacore.tables as ct
 
-                ms = outname.split("MS")[0] + "MS"
-                try:
-                    # strip the hash + tar extension
-                    ct.table(ms)
-                    os.remove(outname)
-                except:
-                    print(f"{ms} is not a valid MeasurementSet")
+                    try:
+                        # strip the hash + tar extension
+                        ct.table(ms)
+                        os.remove(outname)
+                    except:
+                        print(f"{ms} is not a valid MeasurementSet")
 
     def download_all(
         self, max_workers: int, extract: bool = False, verification: str = "basic"
