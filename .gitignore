@@ -2,4 +2,5 @@
 *.log
 srm*.txt
 **/__pycache__
+**/*.pyc
 build
