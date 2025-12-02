@@ -14,6 +14,10 @@ class LTASite(Enum):
     POZNAN = "Poznan"
 
 
+class VerificationLevel(Enum):
+    BASIC = "basic"
+
+
 class Downloader:
     def __init__(self, urls: Iterable, macaroons: dict):
         """Initialise a Downloader object.
@@ -82,7 +86,9 @@ class Downloader:
                             os.remove(outname)
                         else:
                             os.rename(ms, ms + ".nodysco")
-                            os.system(f"DP3 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]")
+                            os.system(
+                                f"DP3 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
+                            )
                             os.remove(outname)
                     except:
                         print(f"{ms} is not a valid MeasurementSet")
@@ -111,11 +117,11 @@ def download(
         bool, Option(help="Extract the tarball after downloading.")
     ] = True,
     verification: Annotated[
-        Literal["basic"],
+        VerificationLevel,
         Option(
             help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
         ),
-    ] = "basic",
+    ] = VerificationLevel.BASIC,
 ):
     """Download data from the LTA that was staged via the StageIt service."""
     urls = get_webdav_urls_requested(stage_id)
