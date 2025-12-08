@@ -31,7 +31,6 @@ class Downloader:
 
     def download_url(
         self,
-        url: str,
         arguments: tuple[str, bool, str, str],
     ):
         """Download the MS pointed to by the URL.
