@@ -278,12 +278,6 @@ def setup_argparser(parser):
     parser.add_argument(
         "--freq_end", help="Search only for subbands at or below this frequency."
     )
-    parser.add_argument(
-        "--type",
-        default="AveragingPipeline",
-        choices=["AveragingPipeline"],
-        help="Type of data product.",
-    )
     parser.add_argument("--ra", type=float, help="Search for this right ascension.")
     parser.add_argument("--dec", type=float, help="Search for this declination")
     parser.add_argument(
