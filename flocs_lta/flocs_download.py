@@ -12,6 +12,7 @@ from typing_extensions import Annotated, Literal
 class LTASite(Enum):
     JUELICH = "Juelich"
     POZNAN = "Poznan"
+    SURF = "SURF"
 
 
 class VerificationLevel(Enum):
@@ -53,8 +54,10 @@ class Downloader:
         outname = os.path.join(outdir_full, url.split("/")[-1])
         if "juelich" in url:
             site = LTASite.JUELICH
-        if "psnc" in url:
+        elif "psnc" in url:
             site = LTASite.POZNAN
+        elif "surf" in url:
+            site = LTASite.SURF
         if not site:
             raise RuntimeError("Unknown LTA site encountered.")
         # strip the hash + tar extension
