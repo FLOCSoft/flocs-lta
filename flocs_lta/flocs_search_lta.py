@@ -177,8 +177,7 @@ class ObservationStager:
                     )
                 elif obsid and (not sapid):
                     dataproducts = (
-                        CorrelatedDataProduct.observation.observationId
-                        == obsid
+                        CorrelatedDataProduct.observation.observationId == obsid
                     )
                 print(f"Found {len(dataproducts)} CorrelatedDataProducts")
                 for dp in dataproducts:
@@ -187,6 +186,7 @@ class ObservationStager:
                     ).max("creation_date")
                     if fo is not None:
                         uris.add(fo.URI)
+                    break
                 self.target_uris = uris
                 with open(f"srms_{self.target.observationId}.txt", "w") as f:
                     for uri in sorted(uris):
@@ -269,7 +269,9 @@ class ObservationStager:
 
 
 def setup_argparser(parser):
-    parser.add_argument("--project", help="Project the observation belongs to.", default="ALL")
+    parser.add_argument(
+        "--project", help="Project the observation belongs to.", default="ALL"
+    )
     parser.add_argument("--sasid", help="ID of the observation without the 'L' prefix.")
     parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
@@ -291,6 +293,11 @@ def setup_argparser(parser):
         action="store_true",
         help="Stage the data after finding it.",
     )
+    parser.add_argument(
+        "--stage-products",
+        choices=["calibrator", "target", "both"],
+        help="The data products that will be staged.",
+    )
 
 
 def main():
@@ -307,8 +314,12 @@ def main():
         )
         stager.find_nearest_calibrators()
         if args.stage:
-            stager.stage_calibrators()
-            stager.stage_target()
+            if (args.stage_products == "calibrator") or (
+                args.stage_producuts == "both"
+            ):
+                stager.stage_calibrators()
+            if (args.stage_products == "target") or (args.stage_producuts == "both"):
+                stager.stage_target()
     else:
         stager = ObservationStager()
         stager.find_observation_by_position(
