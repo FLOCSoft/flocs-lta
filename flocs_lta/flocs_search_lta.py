@@ -315,7 +315,7 @@ def main():
         stager.find_nearest_calibrators()
         if args.stage:
             if (args.stage_products == "calibrator") or (
-                args.stage_producuts == "both"
+                args.stage_products == "both"
             ):
                 stager.stage_calibrators()
             if (args.stage_products == "target") or (args.stage_products == "both"):
