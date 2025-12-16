@@ -186,7 +186,6 @@ class ObservationStager:
                     ).max("creation_date")
                     if fo is not None:
                         uris.add(fo.URI)
-                    break
                 self.target_uris = uris
                 with open(f"srms_{self.target.observationId}.txt", "w") as f:
                     for uri in sorted(uris):
