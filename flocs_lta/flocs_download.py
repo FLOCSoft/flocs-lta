@@ -94,6 +94,8 @@ class Downloader:
                             os.remove(outname)
                     except:
                         print(f"{ms} is not a valid MeasurementSet")
+        else:
+            print(f"{ms} already exists.")
 
     def download_all(
         self, max_workers: int, extract: bool = False, verification: str = "basic"
