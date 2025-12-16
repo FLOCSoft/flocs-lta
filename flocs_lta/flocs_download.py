@@ -119,11 +119,11 @@ def download(
         bool, Option(help="Extract the tarball after downloading.")
     ] = True,
     verification: Annotated[
-        VerificationLevel,
+        str,
         Option(
             help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
         ),
-    ] = VerificationLevel.BASIC,
+    ] = "basic",
 ):
     """Download data from the LTA that was staged via the StageIt service."""
     urls = get_webdav_urls_requested(stage_id)
