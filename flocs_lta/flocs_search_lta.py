@@ -318,7 +318,7 @@ def main():
                 args.stage_producuts == "both"
             ):
                 stager.stage_calibrators()
-            if (args.stage_products == "target") or (args.stage_producuts == "both"):
+            if (args.stage_products == "target") or (args.stage_products == "both"):
                 stager.stage_target()
     else:
         stager = ObservationStager()
