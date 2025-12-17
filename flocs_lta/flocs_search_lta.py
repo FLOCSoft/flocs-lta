@@ -191,15 +191,17 @@ class ObservationStager:
                     for uri in sorted(uris):
                         f.write(uri + "\n")
 
-    def stage_calibrators(self):
+    def stage_calibrators(self) -> int:
         print("Staging calibrator data")
         id = stage(list(self.calibrator_uris))
         print(f"Staging request submitted with staging ID {id}")
+        return id
 
-    def stage_target(self):
+    def stage_target(self) -> int:
         print("Staging target data")
         id = stage(list(self.target_uris))
         print(f"Staging request submitted with staging ID {id}")
+        return id
 
     def find_nearest_calibrators(self):
         print("Searching for nearest calibrators.")
