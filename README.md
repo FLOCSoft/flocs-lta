@@ -3,10 +3,31 @@ A package that focuses on interaction with the LOFAR Long Term Archive within th
 
 ## Requirements
 
-The following dependencies need to be installed:
+### Downloading data
+
+The following dependencies need to be installed for downloading data:
 
 * lofar_lta: https://lta.lofar.eu/software/
+
+After creating a file `$HOME/.stagingrc` with your username and StageIt token, you should be able to download via `flocs-download <staging id>`.
+
+### Staging data
+The following dependencies need to be installed for staging data:
+
 * lofar_stager_api: https://git.astron.nl/astron-sdc/lofar_stager_api
+* Oracle instant client
+
+Do not install oracle via the LTA Client instructions. Instead, install
+
+```bash
+uv pip install cx-oracle
+```
+
+Then you will need to configure your AWE environment by editing `$HOME/.awe/Environment.cfg` with your LTA login credentials.
+
+If you want to be able to stage data, you need the Oracle instant client. Install it via your package manager, or this webpage:
+
+https://www.oracle.com/database/technologies/instant-client/linux-x86-64-downloads.html
 
 
 ## Installation
