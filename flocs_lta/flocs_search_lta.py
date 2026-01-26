@@ -121,7 +121,11 @@ class ObservationStager:
                 else:
                     continue
 
-            if num_observations == 1:
+            if num_observations == 0:
+                print(
+                    "No observations containing the target within specified parameters found."
+                )
+            elif num_observations == 1:
                 self.obsid = target.observationId
                 self.project = target.get_project()
                 self.target = target
@@ -315,9 +319,7 @@ def main():
         )
         stager.find_nearest_calibrators()
         if args.stage:
-            if (args.stage_products == "calibrator") or (
-                args.stage_products == "both"
-            ):
+            if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
             if (args.stage_products == "target") or (args.stage_products == "both"):
                 stager.stage_target()
