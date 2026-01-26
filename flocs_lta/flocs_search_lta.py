@@ -98,8 +98,9 @@ class ObservationStager:
                         dataproducts &= CorrelatedDataProduct.isValid == 1
                         dataproducts &= CorrelatedDataProduct.maximumFrequency < 168
                         print(f"Found {len(dataproducts)} CorrelatedDataProducts")
-                        if get_surls:
+                        if len(dataproducts):
                             num_observations += 1
+                        if get_surls:
                             if num_observations < 2:
                                 for dp in dataproducts:
                                     fo = (
@@ -121,7 +122,7 @@ class ObservationStager:
                 else:
                     continue
 
-            if num_observations == 0:
+            if num_observations == 0 and len(dataproducts) == 0:
                 print(
                     "No observations containing the target within specified parameters found."
                 )
