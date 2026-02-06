@@ -89,7 +89,7 @@ class Downloader:
                         else:
                             os.rename(ms, ms + ".nodysco")
                             os.system(
-                                f"DP3 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
+                                f"DP3 numthreads=1 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
                             )
                             os.remove(outname)
                     except:
