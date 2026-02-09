@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 from datetime import timedelta
+from typing import Optional
 
 import astropy.units as u
 import numpy as np
@@ -27,6 +28,9 @@ def print_observation_details(obs):
 
 
 class ObservationStager:
+    def __init__(self, get_surls: bool = False):
+        self.get_surls = get_surls
+
     def find_observation_by_position(
         self,
         project: str,
@@ -34,7 +38,8 @@ class ObservationStager:
         dec: float,
         radius: float,
         duration: float,
-        get_surls: bool = False,
+        minfreq: Optional[float] = None,
+        maxfreq: Optional[float] = None,
     ):
         context.set_project(project)
         if context.get_current_project().name != project:
@@ -96,11 +101,18 @@ class ObservationStager:
                             == target_obs.subArrayPointingIdentifier
                         )
                         dataproducts &= CorrelatedDataProduct.isValid == 1
-                        dataproducts &= CorrelatedDataProduct.maximumFrequency < 168
+                        if minfreq:
+                            dataproducts &= (
+                                CorrelatedDataProduct.minimumFrequency >= minfreq
+                            )
+                        if maxfreq:
+                            dataproducts &= (
+                                CorrelatedDataProduct.maximumFrequency <= maxfreq
+                            )
                         print(f"Found {len(dataproducts)} CorrelatedDataProducts")
                         if len(dataproducts):
                             num_observations += 1
-                        if get_surls:
+                        if self.get_surls:
                             if num_observations < 2:
                                 for dp in dataproducts:
                                     fo = (
@@ -138,7 +150,12 @@ class ObservationStager:
                 sys.exit(0)
 
     def find_observation_by_sasid(
-        self, project: str, obsid: str, get_surls: bool = False, sapid: str = None
+        self,
+        project: str,
+        obsid: str,
+        sapid: Optional[str] = None,
+        minfreq: Optional[float] = None,
+        maxfreq: Optional[float] = None,
     ):
         context.set_project(project)
         if context.get_current_project().name != project:
@@ -172,7 +189,7 @@ class ObservationStager:
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
 
-            if get_surls:
+            if self.get_surls:
                 print("Obtaining SURLs for dataproducts")
                 if sapid:
                     dataproducts = CorrelatedDataProduct.isValid == 1
@@ -184,6 +201,10 @@ class ObservationStager:
                     dataproducts = (
                         CorrelatedDataProduct.observation.observationId == obsid
                     )
+                if minfreq:
+                    dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
+                if maxfreq:
+                    dataproducts &= CorrelatedDataProduct.minimumFrequency <= maxfreq
                 print(f"Found {len(dataproducts)} CorrelatedDataProducts")
                 for dp in dataproducts:
                     fo = (
@@ -242,36 +263,38 @@ class ObservationStager:
         if second_closest:
             print("== 2nd closest calibrator observation ==")
             print_observation_details(second_closest)
-
-        saps = (
-            CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-            == list(closest.subArrayPointings)[0].subArrayPointingIdentifier
-        )
-        saps &= CorrelatedDataProduct.isValid == 1
-        uris = set()
-        for dp in saps:
-            fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
-                "creation_date"
-            )
-            if fo is not None:
-                uris.add(fo.URI)
-
-        if second_closest:
+        if self.get_surls:
             saps = (
                 CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                == list(second_closest.subArrayPointings)[0].subArrayPointingIdentifier
+                == list(closest.subArrayPointings)[0].subArrayPointingIdentifier
             )
             saps &= CorrelatedDataProduct.isValid == 1
+            uris = set()
             for dp in saps:
                 fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
                     "creation_date"
                 )
                 if fo is not None:
                     uris.add(fo.URI)
-        self.calibrator_uris = uris
-        with open(f"srms_{self.target.observationId}_calibrators.txt", "w") as f:
-            for uri in sorted(uris):
-                f.write(uri + "\n")
+
+            if second_closest:
+                saps = (
+                    CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
+                    == list(second_closest.subArrayPointings)[
+                        0
+                    ].subArrayPointingIdentifier
+                )
+                saps &= CorrelatedDataProduct.isValid == 1
+                for dp in saps:
+                    fo = (
+                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
+                    ).max("creation_date")
+                    if fo is not None:
+                        uris.add(fo.URI)
+            self.calibrator_uris = uris
+            with open(f"srms_{self.target.observationId}_calibrators.txt", "w") as f:
+                for uri in sorted(uris):
+                    f.write(uri + "\n")
 
 
 def setup_argparser(parser):
@@ -314,9 +337,13 @@ def main():
     args = parser.parse_args()
 
     if args.sasid:
-        stager = ObservationStager()
+        stager = ObservationStager(args.stage)
         stager.find_observation_by_sasid(
-            args.project, args.sasid, args.stage, args.sapid
+            args.project,
+            args.sasid,
+            args.sapid,
+            args.freq_start,
+            args.freq_end,
         )
         stager.find_nearest_calibrators()
         if args.stage:
@@ -325,14 +352,15 @@ def main():
             if (args.stage_products == "target") or (args.stage_products == "both"):
                 stager.stage_target()
     else:
-        stager = ObservationStager()
+        stager = ObservationStager(args.stage)
         stager.find_observation_by_position(
             args.project,
             args.ra,
             args.dec,
             args.max_radius,
             args.min_duration,
-            args.stage,
+            args.freq_start,
+            args.freq_end,
         )
         stager.find_nearest_calibrators()
         if args.stage:
