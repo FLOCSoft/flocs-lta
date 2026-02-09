@@ -304,10 +304,10 @@ def setup_argparser(parser):
     parser.add_argument("--sasid", help="ID of the observation without the 'L' prefix.")
     parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
-        "--freq_start", help="Search only for subbands at or above this frequency."
+        "--freq_start", help="Only sub bands at or above this frequency in MHz will be staged."
     )
     parser.add_argument(
-        "--freq_end", help="Search only for subbands at or below this frequency."
+        "--freq_end", help="Only sub bands at or below this frequency in MHz will be staged."
     )
     parser.add_argument("--ra", type=float, help="Search for this right ascension.")
     parser.add_argument("--dec", type=float, help="Search for this declination")
