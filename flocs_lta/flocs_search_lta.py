@@ -161,22 +161,16 @@ class ObservationStager:
         if context.get_current_project().name != project:
             raise ValueError(f"No permissions for project {project}")
         if project == "ALL":
-            query = Observation.select_all()
+            query = AveragingPipeline.select_all()
         else:
-            query = Observation.select_all().project_only(project)
+            query = AveragingPipeline.select_all().project_only(project)
 
-        query &= Observation.isValid == 1
-        query &= Observation.observationId == obsid
-        if not len(query):
-            if project == "ALL":
-                query = AveragingPipeline.select_all()
-            else:
-                query = AveragingPipeline.select_all().project_only(project)
-            query &= AveragingPipeline.isValid == 1
-            query &= AveragingPipeline.observationId == obsid
+        query &= AveragingPipeline.isValid == 1
+        query &= AveragingPipeline.observationId == obsid
         observations = list(query)
-        if observations:
-            print(f"== {len(observations)} target observation(s) found ==")
+        print(observations)
+        if len(observations) == 1:
+            print(f"== {len(query)} pipeline(s) found ==")
             self.target = observations[0]
             if type(self.target) is AveragingPipeline:
                 sapid = self.target.sourceData[0].subArrayPointingIdentifier
@@ -185,37 +179,30 @@ class ObservationStager:
             self.project = self.target.get_project()
             print_observation_details(self.target)
 
-            uris = set()
-            self.obsid = self.target.observationId
-            self.project = self.target.get_project()
-
             if self.get_surls:
                 print("Obtaining SURLs for dataproducts")
-                if sapid:
+                for pipeline in query:
+                    procid = pipeline.processIdentifier
                     dataproducts = CorrelatedDataProduct.isValid == 1
-                    dataproducts &= (
-                        CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                        == sapid
-                    )
-                elif obsid and (not sapid):
-                    dataproducts = (
-                        CorrelatedDataProduct.observation.observationId == obsid
-                    )
-                if minfreq:
-                    dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
-                if maxfreq:
-                    dataproducts &= CorrelatedDataProduct.minimumFrequency <= maxfreq
-                print(f"Found {len(dataproducts)} CorrelatedDataProducts")
-                for dp in dataproducts:
-                    fo = (
-                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
-                    ).max("creation_date")
-                    if fo is not None:
-                        uris.add(fo.URI)
-                self.target_uris = uris
-                with open(f"srms_{self.target.observationId}.txt", "w") as f:
-                    for uri in sorted(uris):
-                        f.write(uri + "\n")
+                    dataproducts &= (CorrelatedDataProduct.processIdentifier == procid)
+
+                    if minfreq:
+                        dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
+                    if maxfreq:
+                        dataproducts &= CorrelatedDataProduct.minimumFrequency <= maxfreq
+                    print(f"Found {len(dataproducts)} CorrelatedDataProducts")
+
+                    uris = set()
+                    for dp in dataproducts:
+                        fo = (
+                            (FileObject.data_object == dp) & (FileObject.isValid > 0)
+                        ).max("creation_date")
+                        if fo is not None:
+                            uris.add(fo.URI)
+                    self.target_uris = uris
+                    with open(f"srms_{self.target.observationId}.txt", "w") as f:
+                        for uri in sorted(uris):
+                            f.write(uri + "\n")
 
     def stage_calibrators(self) -> int:
         print("Staging calibrator data")
