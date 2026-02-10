@@ -318,14 +318,9 @@ def setup_argparser(parser):
         "--min-duration", type=float, help="Minimum duration of the observation."
     )
     parser.add_argument(
-        "--stage",
-        action="store_true",
-        help="Stage the data after finding it.",
-    )
-    parser.add_argument(
         "--stage-products",
         choices=["calibrator", "target", "both"],
-        help="The data products that will be staged.",
+        help="The data products that will be staged. If not provided, only a search is performed.",
     )
 
 
@@ -337,7 +332,7 @@ def main():
     args = parser.parse_args()
 
     if args.sasid:
-        stager = ObservationStager(args.stage)
+        stager = ObservationStager(bool(args.stage_products))
         stager.find_observation_by_sasid(
             args.project,
             args.sasid,
@@ -346,13 +341,13 @@ def main():
             args.freq_end,
         )
         stager.find_nearest_calibrators()
-        if args.stage:
+        if args.stage_products:
             if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
             if (args.stage_products == "target") or (args.stage_products == "both"):
                 stager.stage_target()
     else:
-        stager = ObservationStager(args.stage)
+        stager = ObservationStager(bool(args.stage_products))
         stager.find_observation_by_position(
             args.project,
             args.ra,
@@ -363,7 +358,7 @@ def main():
             args.freq_end,
         )
         stager.find_nearest_calibrators()
-        if args.stage:
+        if args.stage_products:
             stager.stage_calibrators()
             stager.stage_target()
 
