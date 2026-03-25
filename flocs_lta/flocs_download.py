@@ -6,7 +6,7 @@ import typer
 from enum import Enum
 from stager_access import get_macaroons, get_webdav_urls_requested
 from typer import Argument, Option
-from typing_extensions import Annotated, Literal
+from typing_extensions import Annotated
 
 
 class LTASite(Enum):
@@ -98,7 +98,11 @@ class Downloader:
             print(f"{ms} already exists.")
 
     def download_all(
-        self, max_workers: int, extract: bool = False, verification: str = "basic"
+        self,
+        max_workers: int,
+        extract: bool = False,
+        verification: str = "basic",
+        outdir: str = os.getcwd(),
     ):
         """Download all URLs belonging to the instance.
 
@@ -108,7 +112,7 @@ class Downloader:
         with ProcessPoolExecutor(max_workers=max_workers) as pex:
             pex.map(
                 self.download_url,
-                [(url, extract, verification, "") for url in self.urls],
+                [(url, extract, verification, outdir) for url in self.urls],
             )
 
 
@@ -126,12 +130,18 @@ def download(
             help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
         ),
     ] = "basic",
+    outdir: Annotated[
+        str,
+        Option(help="Directory to store downloaded dataproducts in."),
+    ] = os.getcwd(),
 ):
     """Download data from the LTA that was staged via the StageIt service."""
     urls = get_webdav_urls_requested(stage_id)
     macaroons = get_macaroons(stage_id)
     dl = Downloader(urls, macaroons[0])
-    dl.download_all(parallel_downloads, extract=extract, verification=verification)
+    dl.download_all(
+        parallel_downloads, extract=extract, verification=verification, outdir=outdir
+    )
 
 
 def main():
