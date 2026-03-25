@@ -304,10 +304,12 @@ def setup_argparser(parser):
     parser.add_argument("--sasid", help="ID of the observation without the 'L' prefix.")
     parser.add_argument("--sapid", help="ID of the SubArrayPointing.", default="")
     parser.add_argument(
-        "--freq_start", help="Only sub bands at or above this frequency in MHz will be staged."
+        "--freq_start",
+        help="Only sub bands at or above this frequency in MHz will be staged.",
     )
     parser.add_argument(
-        "--freq_end", help="Only sub bands at or below this frequency in MHz will be staged."
+        "--freq_end",
+        help="Only sub bands at or below this frequency in MHz will be staged.",
     )
     parser.add_argument("--ra", type=float, help="Search for this right ascension.")
     parser.add_argument("--dec", type=float, help="Search for this declination")
@@ -316,6 +318,11 @@ def setup_argparser(parser):
     )
     parser.add_argument(
         "--min-duration", type=float, help="Minimum duration of the observation."
+    )
+    parser.add_argument(
+        "--get-surls",
+        action="store_true",
+        help="Write text file(s) containing surls to be staged.",
     )
     parser.add_argument(
         "--stage-products",
@@ -332,7 +339,7 @@ def main():
     args = parser.parse_args()
 
     if args.sasid:
-        stager = ObservationStager(bool(args.stage_products))
+        stager = ObservationStager(get_surls=args.get_surls)
         stager.find_observation_by_sasid(
             args.project,
             args.sasid,
@@ -347,7 +354,7 @@ def main():
             if (args.stage_products == "target") or (args.stage_products == "both"):
                 stager.stage_target()
     else:
-        stager = ObservationStager(bool(args.stage_products))
+        stager = ObservationStager(get_surls=args.get_surls)
         stager.find_observation_by_position(
             args.project,
             args.ra,
