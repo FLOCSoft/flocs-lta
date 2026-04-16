@@ -337,6 +337,8 @@ def main():
     )
     setup_argparser(parser)
     args = parser.parse_args()
+    if args.stage_products:
+        args.get_surls = True
 
     if args.sasid:
         stager = ObservationStager(get_surls=args.get_surls)
