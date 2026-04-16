@@ -366,8 +366,10 @@ def main():
         )
         stager.find_nearest_calibrators()
         if args.stage_products:
-            stager.stage_calibrators()
-            stager.stage_target()
+            if (args.stage_products == "calibrator") or (args.stage_products == "both"):
+                stager.stage_calibrators()
+            if (args.stage_products == "target") or (args.stage_products == "both"):
+                stager.stage_target()
 
 
 if __name__ == "__main__":
