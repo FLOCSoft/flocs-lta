@@ -24,6 +24,7 @@ def print_observation_details(obs):
     print(f"Start time: {obs.startTime}")
     print(f"End time: {obs.endTime}")
     print(f"Duration: {obs.duration} s")
+    print(f"Description: {obs.processIdentifierName}")    
     print()
 
 
@@ -228,74 +229,62 @@ class ObservationStager:
         id = stage(list(self.target_uris))
         print(f"Staging request submitted with staging ID {id}")
         return id
-
-    def find_nearest_calibrators(self):
+        
+    def find_nearest_calibrators(self, n_calibrators=2, minfreq=None, maxfreq=None):
         print("Searching for nearest calibrators.")
         dt_obs = timedelta(hours=self.target.duration)
-        dt = timedelta(hours=1)
+        dt = timedelta(hours=168)
 
         obs_queries = Observation.select_all().project_only(self.project)
         obs_queries &= (Observation.startTime > self.target.startTime - dt) & (
             Observation.startTime < self.target.startTime + dt_obs + dt
         )
-        # HBA calibrator scans are always ~10-15 mins; be a bit lenient.
         obs_queries &= Observation.duration < 3600
         obs_queries &= Observation.observationId != self.target.observationId
 
-        print(f"Identified {len(obs_queries)} potential calibrators.")
         calibrators = list(obs_queries)
-        closest = calibrators[0]
-        second_closest = calibrators[0]
+        print(f"Identified {len(calibrators)} potential calibrators.")
 
-        for cal in obs_queries:
-            if np.abs(cal.startTime - self.target.startTime) < np.abs(
-                closest.startTime - self.target.startTime
-            ):
-                second_closest = closest
-                closest = cal
-            elif (
-                np.abs(cal.startTime - self.target.startTime)
-                < np.abs(second_closest.startTime - self.target.startTime)
-            ) and (cal.observationId != closest.observationId):
-                second_closest = cal
-        print("== Closest calibrator observation ==")
-        print_observation_details(closest)
-        if second_closest:
-            print("== 2nd closest calibrator observation ==")
-            print_observation_details(second_closest)
+        closest_calibrators = sorted(
+            calibrators,
+            key=lambda cal: abs(cal.startTime - self.target.startTime)
+        )[:n_calibrators]
+
+        for i, cal in enumerate(closest_calibrators, start=1):
+            print(f"== Closest calibrator observation #{i} ==")
+            print_observation_details(cal)
+
         if self.get_surls:
-            saps = (
-                CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                == list(closest.subArrayPointings)[0].subArrayPointingIdentifier
-            )
-            saps &= CorrelatedDataProduct.isValid == 1
             uris = set()
-            for dp in saps:
-                fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
-                    "creation_date"
-                )
-                if fo is not None:
-                    uris.add(fo.URI)
 
-            if second_closest:
+            for cal in closest_calibrators:
                 saps = (
                     CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                    == list(second_closest.subArrayPointings)[
-                        0
-                    ].subArrayPointingIdentifier
+                    == list(cal.subArrayPointings)[0].subArrayPointingIdentifier
                 )
                 saps &= CorrelatedDataProduct.isValid == 1
+
+                if minfreq:
+                    saps &= CorrelatedDataProduct.minimumFrequency >= minfreq
+                if maxfreq:
+                    saps &= CorrelatedDataProduct.maximumFrequency <= maxfreq
+
+                print(
+                    f"Found {len(saps)} matching data products for calibrator "
+                    f"{cal.observationId}"
+                )
+
                 for dp in saps:
-                    fo = (
-                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
-                    ).max("creation_date")
+                    fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
+                        "creation_date"
+                    )
                     if fo is not None:
                         uris.add(fo.URI)
+
             self.calibrator_uris = uris
             with open(f"srms_{self.target.observationId}_calibrators.txt", "w") as f:
                 for uri in sorted(uris):
                     f.write(uri + "\n")
-
 
 def setup_argparser(parser):
     parser.add_argument(
@@ -318,6 +307,9 @@ def setup_argparser(parser):
     )
     parser.add_argument(
         "--min-duration", type=float, help="Minimum duration of the observation."
+    )
+    parser.add_argument(
+        "--num_calibrators", type=int, help="Number of calibrators to return.", default=2
     )
     parser.add_argument(
         "--get-surls",
@@ -349,7 +341,7 @@ def main():
             args.freq_start,
             args.freq_end,
         )
-        stager.find_nearest_calibrators()
+        stager.find_nearest_calibrators(n_calibrators=args.num_calibrators, minfreq=args.freq_start, maxfreq=args.freq_end)
         if args.stage_products:
             if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
@@ -366,7 +358,7 @@ def main():
             args.freq_start,
             args.freq_end,
         )
-        stager.find_nearest_calibrators()
+        stager.find_nearest_calibrators(n_calibrators=args.num_calibrators, minfreq=args.freq_start, maxfreq=args.freq_end)
         if args.stage_products:
             if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
