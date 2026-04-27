@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 import os
+import shutil
 from concurrent.futures import ProcessPoolExecutor
-from typing import Iterable
-import typer
 from enum import Enum
+from typing import Iterable
+
+import typer
 from stager_access import get_macaroons, get_webdav_urls_requested
 from typer import Argument, Option
 from typing_extensions import Annotated
@@ -87,11 +89,20 @@ class Downloader:
                         if has_dysco:
                             os.remove(outname)
                         else:
-                            os.rename(ms, ms + ".nodysco")
-                            os.system(
-                                f"DP3 numthreads=1 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
-                            )
-                            os.remove(outname)
+                            if "CWL_SINGULARITY_CACHE" in os.environ.keys():
+                                os.rename(ms, ms + ".nodysco")
+                                os.system(
+                                    f"apptainer exec {os.path.join(os.environ['CWL_SINGULARITY_CACHE'], 'astronrd_linc_latest.sif')} DP3 numthreads=2 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
+                                )
+                                os.remove(outname)
+                                shutil.rmtree(ms + ".nodysco")
+                            elif shutil.which("DP3"):
+                                os.rename(ms, ms + ".nodysco")
+                                os.system(
+                                    f"DP3 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
+                                )
+                                os.remove(outname)
+                                shutil.rmtree(ms + ".nodysco")
                     except:
                         print(f"{ms} is not a valid MeasurementSet")
         else:
