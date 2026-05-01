@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse
+# pyright: reportOperatorIssue=none,reportAttributeAccessIssue=none
 import sys
 from datetime import timedelta
 from typing import Optional
@@ -7,7 +7,6 @@ from typing import Optional
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
-from cyclopts import App
 from awlofar.database.Context import context
 from awlofar.main.aweimports import (
     AveragingPipeline,

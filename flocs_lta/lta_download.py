@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import os
 import shutil
+import structlog
 from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
 from typing import Iterable, Optional
 
+logger = structlog.getLogger()
 
 
 class LTASite(Enum):
@@ -81,11 +83,19 @@ class Downloader:
                         with ct.table(ms) as tab:
                             has_dysco = (
                                 tab.getdesc()["DATA"]["dataManagerGroup"] == "DyscoData"
+                            ) | (
+                                tab.getdesc()["DATA"]["dataManagerType"] == "DyscoStMan"
                             )
                         if has_dysco:
+                            logger.info(
+                                f"{ms} is already dysco compressed. Deleting archive."
+                            )
                             os.remove(outname)
                         else:
-                            if "CWL_SINGULARITY_CACHE" in os.environ.keys():
+                            logger.info(
+                                f"{ms} is not dysco compressed, compressing with DP3."
+                            )
+                            if "CWL_SINGULARITY_CACHE" in os.environ:
                                 os.rename(ms, ms + ".nodysco")
                                 os.system(
                                     f"apptainer exec {os.path.join(os.environ['CWL_SINGULARITY_CACHE'], 'astronrd_linc_latest.sif')} DP3 numthreads=2 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
@@ -100,7 +110,9 @@ class Downloader:
                                 os.remove(outname)
                                 shutil.rmtree(ms + ".nodysco")
                     except:
-                        print(f"{ms} is not a valid MeasurementSet")
+                        print(
+                            f"{ms} is not a valid MeasurementSet or something else went wrong."
+                        )
         else:
             print(f"{ms} already exists.")
 
