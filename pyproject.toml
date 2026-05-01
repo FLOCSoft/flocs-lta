@@ -4,14 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "flocs-lta"
-version = "0.0.0"
+version = "1.0.0"
 description = ""
 requires-python = ">3.9"
-dependencies = ["typer"]
+dependencies = ["astropy", "cyclopts", "structlog"]
 
 [project.scripts]
-flocs-lta-download = "flocs_lta.flocs_download:main"
-flocs-lta-search = "flocs_lta.flocs_search_lta:main"
+flocs-lta = "flocs_lta.flocs_lta:main"
 
 [tool.setuptools]
 packages = ["flocs_lta"]

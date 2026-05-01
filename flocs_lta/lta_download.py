@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 import os
 import shutil
+import structlog
 from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
-from typing import Iterable
+from typing import Iterable, Optional
 
-import typer
-from stager_access import get_macaroons, get_webdav_urls_requested
-from typer import Argument, Option
-from typing_extensions import Annotated
+logger = structlog.getLogger()
 
 
 class LTASite(Enum):
@@ -85,11 +83,19 @@ class Downloader:
                         with ct.table(ms) as tab:
                             has_dysco = (
                                 tab.getdesc()["DATA"]["dataManagerGroup"] == "DyscoData"
+                            ) | (
+                                tab.getdesc()["DATA"]["dataManagerType"] == "DyscoStMan"
                             )
                         if has_dysco:
+                            logger.info(
+                                f"{ms} is already dysco compressed. Deleting archive."
+                            )
                             os.remove(outname)
                         else:
-                            if "CWL_SINGULARITY_CACHE" in os.environ.keys():
+                            logger.info(
+                                f"{ms} is not dysco compressed, compressing with DP3."
+                            )
+                            if "CWL_SINGULARITY_CACHE" in os.environ:
                                 os.rename(ms, ms + ".nodysco")
                                 os.system(
                                     f"apptainer exec {os.path.join(os.environ['CWL_SINGULARITY_CACHE'], 'astronrd_linc_latest.sif')} DP3 numthreads=2 msin={ms+'.nodysco'} msout={ms} msout.storagemanager=dysco steps=[]"
@@ -104,16 +110,18 @@ class Downloader:
                                 os.remove(outname)
                                 shutil.rmtree(ms + ".nodysco")
                     except:
-                        print(f"{ms} is not a valid MeasurementSet")
+                        print(
+                            f"{ms} is not a valid MeasurementSet or something else went wrong."
+                        )
         else:
             print(f"{ms} already exists.")
 
     def download_all(
         self,
-        max_workers: int,
-        extract: bool = False,
-        verification: str = "basic",
-        outdir: str = os.getcwd(),
+        max_workers: Optional[int] = 1,
+        extract: Optional[bool] = False,
+        verification: Optional[str] = "basic",
+        outdir: Optional[str] = os.getcwd(),
     ):
         """Download all URLs belonging to the instance.
 
@@ -125,39 +133,3 @@ class Downloader:
                 self.download_url,
                 [(url, extract, verification, outdir) for url in self.urls],
             )
-
-
-def download(
-    stage_id: Annotated[str, Argument(help="StageIt staging ID.")],
-    parallel_downloads: Annotated[
-        int, Option(help="Maximum number of parallel downloads.")
-    ] = 1,
-    extract: Annotated[
-        bool, Option(help="Extract the tarball after downloading.")
-    ] = True,
-    verification: Annotated[
-        str,
-        Option(
-            help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
-        ),
-    ] = "basic",
-    outdir: Annotated[
-        str,
-        Option(help="Directory to store downloaded dataproducts in."),
-    ] = os.getcwd(),
-):
-    """Download data from the LTA that was staged via the StageIt service."""
-    urls = get_webdav_urls_requested(stage_id)
-    macaroons = get_macaroons(stage_id)
-    dl = Downloader(urls, macaroons[0])
-    dl.download_all(
-        parallel_downloads, extract=extract, verification=verification, outdir=outdir
-    )
-
-
-def main():
-    typer.run(download)
-
-
-if __name__ == "__main__":
-    typer.run(download)
