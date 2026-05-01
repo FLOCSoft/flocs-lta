@@ -6,7 +6,7 @@ import cyclopts
 import structlog
 from cyclopts import Parameter
 from stager_access import get_macaroons, get_webdav_urls_requested
-from typing import Iterable
+from typing import Iterable, Literal
 from typing_extensions import Annotated
 
 from .lta_download import Downloader
@@ -56,7 +56,42 @@ def download(
 
 
 @app.command
-def search():
+def search(
+    project: Annotated[
+        Optional[str],
+        Parameter(help="LTA project to limit searches to."),
+    ] = "ALL",
+    sasid: Annotated[
+        Optional[str],
+        Parameter(help="SAS ID to search for."),
+    ] = "",
+    sapi: Annotated[
+        Optional[str],
+        Parameter(
+            help="Sub-array pointing identifier to use in conjunction with `sasid`."
+        ),
+    ] = "",
+    freq_start: Annotated[
+        Optional[float],
+        Parameter(help="Lower limit to which frequency subbands to select."),
+    ] = False,
+    freq_end: Annotated[
+        Optional[float],
+        Parameter(help="Upper limit to which frequency subbands to select."),
+    ] = False,
+    get_surls: Annotated[
+        Optional[bool],
+        Parameter(help="Dump a text file with SURLs for files to be used for staging."),
+    ] = False,
+    stage_products: Annotated[
+        Literal["none", "calibrator", "target", "both"],
+        Parameter(help="Stage the specified products."),
+    ] = "none",
+    band: Annotated[
+        Literal["HBA", "LBA"],
+        Parameter(help="General observing band to search for."),
+    ] = "HBA",
+):
     pass
 
 
@@ -66,4 +101,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-# vim: ft=python
