@@ -97,7 +97,7 @@ def search_id(
         Parameter(help="Number of nearest calibrators to search for."),
     ] = 2,
 ):
-    if stage_products:
+    if stage_products != "none":
         get_surls = True
 
     stager = ObservationStager(get_surls=get_surls)
@@ -109,11 +109,10 @@ def search_id(
         freq_end,
     )
     stager.find_nearest_calibrators(n_calibrators, freq_start, freq_end)
-    if stage_products:
-        if (stage_products == "calibrator") or (stage_products == "both"):
-            stager.stage_calibrators()
-        if (stage_products == "target") or (stage_products == "both"):
-            stager.stage_target()
+    if (stage_products == "calibrator") or (stage_products == "both"):
+        stager.stage_calibrators()
+    if (stage_products == "target") or (stage_products == "both"):
+        stager.stage_target()
 
 
 @app.command
@@ -163,7 +162,7 @@ def search_position(
         Parameter(help="Number of nearest calibrators to search for."),
     ] = 2,
 ):
-    if stage_products:
+    if stage_products != "none":
         get_surls = True
 
     stager = ObservationStager(get_surls=get_surls)
@@ -177,11 +176,10 @@ def search_position(
         freq_end,
     )
     stager.find_nearest_calibrators(n_calibrators, freq_start, freq_end)
-    if stage_products:
-        if (stage_products == "calibrator") or (stage_products == "both"):
-            stager.stage_calibrators()
-        if (stage_products == "target") or (stage_products == "both"):
-            stager.stage_target()
+    if (stage_products == "calibrator") or (stage_products == "both"):
+        stager.stage_calibrators()
+    if (stage_products == "target") or (stage_products == "both"):
+        stager.stage_target()
 
 
 def main():
