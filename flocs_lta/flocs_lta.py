@@ -10,6 +10,7 @@ from typing import Iterable, Literal
 from typing_extensions import Annotated
 
 from .lta_download import Downloader
+from .lta_search import ObservationStager
 
 app = cyclopts.App()
 
@@ -56,15 +57,15 @@ def download(
 
 
 @app.command
-def search(
+def search_id(
+    sasid: Annotated[
+        str,
+        Parameter(help="SAS ID to search for."),
+    ],
     project: Annotated[
-        Optional[str],
+        str,
         Parameter(help="LTA project to limit searches to."),
     ] = "ALL",
-    sasid: Annotated[
-        Optional[str],
-        Parameter(help="SAS ID to search for."),
-    ] = "",
     sapi: Annotated[
         Optional[str],
         Parameter(
@@ -79,8 +80,70 @@ def search(
         Optional[float],
         Parameter(help="Upper limit to which frequency subbands to select."),
     ] = False,
+    band: Annotated[
+        Literal["HBA", "LBA"],
+        Parameter(help="General observing band to search for."),
+    ] = "HBA",
     get_surls: Annotated[
-        Optional[bool],
+        bool,
+        Parameter(help="Dump a text file with SURLs for files to be used for staging."),
+    ] = False,
+    stage_products: Annotated[
+        Literal["none", "calibrator", "target", "both"],
+        Parameter(help="Stage the specified products."),
+    ] = "none",
+):
+    if stage_products:
+        get_surls = True
+
+    stager = ObservationStager(get_surls=get_surls)
+    stager.find_observation_by_sasid(
+        project,
+        sasid,
+        sapi,
+        freq_start,
+        freq_end,
+    )
+    stager.find_nearest_calibrators()
+    if stage_products:
+        if (stage_products == "calibrator") or (stage_products == "both"):
+            stager.stage_calibrators()
+        if (stage_products == "target") or (stage_products == "both"):
+            stager.stage_target()
+
+
+@app.command
+def search_position(
+    ra: Annotated[
+        float,
+        Parameter(help="Right ascension in degrees of the coordinate of interest."),
+    ],
+    dec: Annotated[
+        float,
+        Parameter(help="Declination in degrees of the coordinate of interest."),
+    ],
+    max_radius: Annotated[
+        float,
+        Parameter(help="Maximum distance in degrees an observation is allowed to be."),
+    ] = 1.3,
+    min_duration: Annotated[
+        float,
+        Parameter(help="Minimum duration in hours an observation must be."),
+    ] = 0.0,
+    project: Annotated[
+        str,
+        Parameter(help="LTA project to limit searches to."),
+    ] = "ALL",
+    freq_start: Annotated[
+        Optional[float],
+        Parameter(help="Lower limit to which frequency subbands to select."),
+    ] = False,
+    freq_end: Annotated[
+        Optional[float],
+        Parameter(help="Upper limit to which frequency subbands to select."),
+    ] = False,
+    get_surls: Annotated[
+        bool,
         Parameter(help="Dump a text file with SURLs for files to be used for staging."),
     ] = False,
     stage_products: Annotated[
@@ -92,7 +155,25 @@ def search(
         Parameter(help="General observing band to search for."),
     ] = "HBA",
 ):
-    pass
+    if stage_products:
+        get_surls = True
+
+    stager = ObservationStager(get_surls=get_surls)
+    stager.find_observation_by_position(
+        project,
+        ra,
+        dec,
+        max_radius,
+        min_duration,
+        freq_start,
+        freq_end,
+    )
+    stager.find_nearest_calibrators()
+    if stage_products:
+        if (stage_products == "calibrator") or (stage_products == "both"):
+            stager.stage_calibrators()
+        if (stage_products == "target") or (stage_products == "both"):
+            stager.stage_target()
 
 
 def main():
