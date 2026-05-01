@@ -254,7 +254,7 @@ class ObservationStager:
         calibrators = list(obs_queries)
         closest_calibrators = sorted(
             calibrators, key=lambda cal: abs(cal.startTime - self.target.startTime)
-        )
+        )[:n_calibrators]
         for i, cal in enumerate(closest_calibrators, start=1):
             print(f"== Closest calibrator #{i} ==")
             print_observation_details(cal)
