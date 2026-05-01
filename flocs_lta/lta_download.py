@@ -3,12 +3,8 @@ import os
 import shutil
 from concurrent.futures import ProcessPoolExecutor
 from enum import Enum
-from typing import Iterable
+from typing import Iterable, Optional
 
-import typer
-from stager_access import get_macaroons, get_webdav_urls_requested
-from typer import Argument, Option
-from typing_extensions import Annotated
 
 
 class LTASite(Enum):
@@ -110,10 +106,10 @@ class Downloader:
 
     def download_all(
         self,
-        max_workers: int,
-        extract: bool = False,
-        verification: str = "basic",
-        outdir: str = os.getcwd(),
+        max_workers: Optional[int] = 1,
+        extract: Optional[bool] = False,
+        verification: Optional[str] = "basic",
+        outdir: Optional[str] = os.getcwd(),
     ):
         """Download all URLs belonging to the instance.
 
@@ -125,39 +121,3 @@ class Downloader:
                 self.download_url,
                 [(url, extract, verification, outdir) for url in self.urls],
             )
-
-
-def download(
-    stage_id: Annotated[str, Argument(help="StageIt staging ID.")],
-    parallel_downloads: Annotated[
-        int, Option(help="Maximum number of parallel downloads.")
-    ] = 1,
-    extract: Annotated[
-        bool, Option(help="Extract the tarball after downloading.")
-    ] = True,
-    verification: Annotated[
-        str,
-        Option(
-            help="Only used when `extract` is True. Sets the verification level to perform after extracting the tarball."
-        ),
-    ] = "basic",
-    outdir: Annotated[
-        str,
-        Option(help="Directory to store downloaded dataproducts in."),
-    ] = os.getcwd(),
-):
-    """Download data from the LTA that was staged via the StageIt service."""
-    urls = get_webdav_urls_requested(stage_id)
-    macaroons = get_macaroons(stage_id)
-    dl = Downloader(urls, macaroons[0])
-    dl.download_all(
-        parallel_downloads, extract=extract, verification=verification, outdir=outdir
-    )
-
-
-def main():
-    typer.run(download)
-
-
-if __name__ == "__main__":
-    typer.run(download)

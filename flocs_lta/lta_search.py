@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 import argparse
+import sys
 from datetime import timedelta
 from typing import Optional
 
 import astropy.units as u
 import numpy as np
 from astropy.coordinates import SkyCoord
+from cyclopts import App
 from awlofar.database.Context import context
 from awlofar.main.aweimports import (
     AveragingPipeline,
@@ -14,7 +16,6 @@ from awlofar.main.aweimports import (
     Observation,
     SubArrayPointing,
 )
-import sys
 from stager_access import stage
 
 
@@ -168,6 +169,7 @@ class ObservationStager:
         query &= Observation.isValid == 1
         query &= Observation.observationId == obsid
         if not len(query):
+            print("No Observation found, trying AveragingPipeline")
             if project == "ALL":
                 query = AveragingPipeline.select_all()
             else:
@@ -331,6 +333,10 @@ def setup_argparser(parser):
     )
 
 
+app = App(group="LOFAR")
+
+
+@app.command()
 def main():
     parser = argparse.ArgumentParser(
         description="Find a target observation in the LTA and its closest calibrator scans."
