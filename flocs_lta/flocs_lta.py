@@ -92,6 +92,10 @@ def search_id(
         Literal["none", "calibrator", "target", "both"],
         Parameter(help="Stage the specified products."),
     ] = "none",
+    n_calibrators: Annotated[
+        int,
+        Parameter(help="Number of nearest calibrators to search for."),
+    ] = 2,
 ):
     if stage_products:
         get_surls = True
@@ -104,7 +108,7 @@ def search_id(
         freq_start,
         freq_end,
     )
-    stager.find_nearest_calibrators()
+    stager.find_nearest_calibrators(n_calibrators, freq_start, freq_end)
     if stage_products:
         if (stage_products == "calibrator") or (stage_products == "both"):
             stager.stage_calibrators()
@@ -154,6 +158,10 @@ def search_position(
         Literal["HBA", "LBA"],
         Parameter(help="General observing band to search for."),
     ] = "HBA",
+    n_calibrators: Annotated[
+        int,
+        Parameter(help="Number of nearest calibrators to search for."),
+    ] = 2,
 ):
     if stage_products:
         get_surls = True
@@ -168,7 +176,7 @@ def search_position(
         freq_start,
         freq_end,
     )
-    stager.find_nearest_calibrators()
+    stager.find_nearest_calibrators(n_calibrators, freq_start, freq_end)
     if stage_products:
         if (stage_products == "calibrator") or (stage_products == "both"):
             stager.stage_calibrators()
