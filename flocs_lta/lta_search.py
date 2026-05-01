@@ -22,6 +22,10 @@ from stager_access import stage
 def print_observation_details(obs):
     print(f"Project: {obs.get_project()}")
     print(f"SAS ID: {obs.observationId}")
+    try:
+        print(f"SAPI: {obs.subArrayPointingIdentifier}")
+    except AttributeError:
+        pass
     print(f"Start time: {obs.startTime}")
     print(f"End time: {obs.endTime}")
     print(f"Duration: {obs.duration} s")
@@ -170,7 +174,7 @@ class ObservationStager:
         query &= Observation.isValid == 1
         query &= Observation.observationId == obsid
         if not len(query):
-            print("No Observation found, trying AveragingPipeline")
+            print(f"No Observation with SAS ID {obsid}, trying AveragingPipeline")
             if project == "ALL":
                 query = AveragingPipeline.select_all()
             else:
@@ -183,7 +187,8 @@ class ObservationStager:
             self.target = observations[0]
             if type(self.target) is AveragingPipeline:
                 sapid = self.target.sourceData[0].subArrayPointingIdentifier
-                self.target = self.target.sourceData[0].observation
+                # self.target = self.target.sourceData[0].observation is None for some reason; don't use
+                self.target = self.target.sourceData[0].observations[0]
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
             print_observation_details(self.target)
