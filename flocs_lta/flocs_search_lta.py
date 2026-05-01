@@ -24,7 +24,7 @@ def print_observation_details(obs):
     print(f"Start time: {obs.startTime}")
     print(f"End time: {obs.endTime}")
     print(f"Duration: {obs.duration} s")
-    print(f"Description: {obs.processIdentifierName}")    
+    print(f"Description: {obs.processIdentifierName}")
     print()
 
 
@@ -229,10 +229,10 @@ class ObservationStager:
         id = stage(list(self.target_uris))
         print(f"Staging request submitted with staging ID {id}")
         return id
-        
+
     def find_nearest_calibrators(self, n_calibrators=2, minfreq=None, maxfreq=None):
         print("Searching for nearest calibrators.")
-        dt_obs = timedelta(hours=self.target.duration)
+        dt_obs = timedelta(seconds=self.target.duration)
         dt = timedelta(hours=168)
 
         obs_queries = Observation.select_all().project_only(self.project)
@@ -246,8 +246,7 @@ class ObservationStager:
         print(f"Identified {len(calibrators)} potential calibrators.")
 
         closest_calibrators = sorted(
-            calibrators,
-            key=lambda cal: abs(cal.startTime - self.target.startTime)
+            calibrators, key=lambda cal: abs(cal.startTime - self.target.startTime)
         )[:n_calibrators]
 
         for i, cal in enumerate(closest_calibrators, start=1):
@@ -275,9 +274,9 @@ class ObservationStager:
                 )
 
                 for dp in saps:
-                    fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
-                        "creation_date"
-                    )
+                    fo = (
+                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
+                    ).max("creation_date")
                     if fo is not None:
                         uris.add(fo.URI)
 
@@ -285,6 +284,7 @@ class ObservationStager:
             with open(f"srms_{self.target.observationId}_calibrators.txt", "w") as f:
                 for uri in sorted(uris):
                     f.write(uri + "\n")
+
 
 def setup_argparser(parser):
     parser.add_argument(
@@ -309,7 +309,10 @@ def setup_argparser(parser):
         "--min-duration", type=float, help="Minimum duration of the observation."
     )
     parser.add_argument(
-        "--num_calibrators", type=int, help="Number of calibrators to return.", default=2
+        "--num_calibrators",
+        type=int,
+        help="Number of calibrators to return.",
+        default=2,
     )
     parser.add_argument(
         "--get-surls",
@@ -341,7 +344,11 @@ def main():
             args.freq_start,
             args.freq_end,
         )
-        stager.find_nearest_calibrators(n_calibrators=args.num_calibrators, minfreq=args.freq_start, maxfreq=args.freq_end)
+        stager.find_nearest_calibrators(
+            n_calibrators=args.num_calibrators,
+            minfreq=args.freq_start,
+            maxfreq=args.freq_end,
+        )
         if args.stage_products:
             if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
@@ -358,7 +365,11 @@ def main():
             args.freq_start,
             args.freq_end,
         )
-        stager.find_nearest_calibrators(n_calibrators=args.num_calibrators, minfreq=args.freq_start, maxfreq=args.freq_end)
+        stager.find_nearest_calibrators(
+            n_calibrators=args.num_calibrators,
+            minfreq=args.freq_start,
+            maxfreq=args.freq_end,
+        )
         if args.stage_products:
             if (args.stage_products == "calibrator") or (args.stage_products == "both"):
                 stager.stage_calibrators()
