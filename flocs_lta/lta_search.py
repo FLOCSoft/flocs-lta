@@ -62,7 +62,6 @@ class ObservationStager:
                 (SubArrayPointing.pointing.declination > dec - 5)
                 & (SubArrayPointing.pointing.declination < dec + 5)
             )
-            & (SubArrayPointing.duration > 3600 * duration)
         )
         print(f"Found {len(query)} potential SubArrayPointings.")
         target = None
@@ -82,6 +81,7 @@ class ObservationStager:
                     observations &= Observation.nrStationsCore > 0
                     observations &= Observation.nrStationsRemote > 0
                     observations &= Observation.nrStationsInternational > 8
+                    observations &= Observation.duration > 3600 * duration
                     observations &= (Observation.antennaSet == "HBA Dual Inner") | (
                         Observation.antennaSet == "HBA Dual"
                     )
