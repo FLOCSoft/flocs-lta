@@ -183,7 +183,7 @@ class ObservationStager:
             self.target = observations[0]
             if type(self.target) is AveragingPipeline:
                 sapid = self.target.sourceData[0].subArrayPointingIdentifier
-                self.target = self.target.sourceData[0].observation
+                self.target = self.target.sourceData[0].observations[0]
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
             print_observation_details(self.target)
