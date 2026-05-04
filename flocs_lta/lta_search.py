@@ -202,13 +202,14 @@ class ObservationStager:
 
             if self.get_surls:
                 logger.info("Obtaining SURLs for dataproducts")
+                dataproducts = CorrelatedDataProduct.isValid == 1
                 if sapid:
-                    dataproducts = CorrelatedDataProduct.isValid == 1
                     dataproducts &= (
                         CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
                         == sapid
                     )
-                if self.obsid:
+                # SubArrayPointing identifier will already uniquely identify the beam.
+                if self.obsid and not sapid:
                     dataproducts = (
                         CorrelatedDataProduct.observation.observationId == self.obsid
                     )
@@ -216,16 +217,21 @@ class ObservationStager:
                     dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
                 if maxfreq:
                     dataproducts &= CorrelatedDataProduct.maximumFrequency <= maxfreq
-                logger.info(f"Found {len(dataproducts)} CorrelatedDataProducts")
                 for dp in dataproducts:
                     fo = (
                         (FileObject.data_object == dp) & (FileObject.isValid > 0)
                     ).max("creation_date")
                     if fo is not None:
                         uris.add(fo.URI)
+                logger.info(f"Found {len(uris)} CorrelatedDataProducts")
+                breakpoint()
                 self.target_uris = uris
+                if not self.target_uris:
+                    logger.critical("No valid URIs found for dataproducts.")
+                    sys.exit(0)
                 with open(f"srms_{self.target.observationId}.txt", "w") as f:
                     for uri in sorted(uris):
+                        print(uri)
                         f.write(uri + "\n")
 
     def stage_calibrators(self) -> int:
