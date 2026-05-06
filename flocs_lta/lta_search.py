@@ -38,6 +38,7 @@ class ObservationStager:
     def __init__(self, get_surls: bool = False):
         self.get_surls = get_surls
         self.sapid = None
+        self.srm_prefix = ""
 
     def find_observation_by_position(
         self,
@@ -166,6 +167,7 @@ class ObservationStager:
         maxfreq: Optional[float] = None,
     ):
         self.sapid = sapid
+        self.srm_prefix = f"srms_{obsid}"
         context.set_project(project)
         if context.get_current_project().name != project:
             raise ValueError(f"No permissions for project {project}")
@@ -231,7 +233,7 @@ class ObservationStager:
                 if not self.target_uris:
                     logger.critical("No valid URIs found for dataproducts.")
                     sys.exit(0)
-                with open(f"srms_{self.target.observationId}.txt", "w") as f:
+                with open(f"{self.srm_prefix}.txt", "w") as f:
                     for uri in sorted(uris):
                         print(uri)
                         f.write(uri + "\n")
@@ -293,8 +295,10 @@ class ObservationStager:
                     if fo is not None:
                         uris.add(fo.URI)
                 self.calibrator_uris = uris
-                with open(
-                    f"srms_{self.target.observationId}_calibrators.txt", "w"
-                ) as f:
+                if self.srm_prefix:
+                    fname = self.srm_prefix + "_calibrators.txt"
+                else:
+                    fname = f"srms_{self.target.observationId}_calibrators.txt"
+                with open(fname, "w") as f:
                     for uri in sorted(uris):
                         f.write(uri + "\n")
