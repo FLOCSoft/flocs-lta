@@ -20,11 +20,13 @@ from stager_access import stage
 logger = structlog.getLogger()
 
 
-def print_observation_details(obs):
+def print_observation_details(obs, sapi: str = ""):
     print(f"Project: {obs.get_project()}")
     print(f"SAS ID: {obs.observationId}")
     if len(obs.subArrayPointings) == 1:
         print(f"SAPI: {obs.subArrayPointings[0].subArrayPointingIdentifier}")
+    elif sapi:
+        print(f"SAPI: {sapi}")
     print(f"Start time: {obs.startTime}")
     print(f"End time: {obs.endTime}")
     print(f"Duration: {obs.duration} s")
@@ -189,12 +191,13 @@ class ObservationStager:
         if observations:
             logger.info(f"== {len(observations)} target observation(s) found ==")
             self.target = observations[0]
+            sapid = ""
             if type(self.target) is AveragingPipeline:
                 sapid = self.target.sourceData[0].subArrayPointingIdentifier
                 self.target = self.target.sourceData[0].observations[0]
             self.obsid = self.target.observationId
             self.project = self.target.get_project()
-            print_observation_details(self.target)
+            print_observation_details(self.target, sapi=sapid)
 
             uris = set()
             self.obsid = self.target.observationId
@@ -224,7 +227,6 @@ class ObservationStager:
                     if fo is not None:
                         uris.add(fo.URI)
                 logger.info(f"Found {len(uris)} CorrelatedDataProducts")
-                breakpoint()
                 self.target_uris = uris
                 if not self.target_uris:
                     logger.critical("No valid URIs found for dataproducts.")
