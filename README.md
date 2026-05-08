@@ -38,4 +38,4 @@ The FLOCS LTA package can be installed as usual with pip:
 uv pip install git+https://github.com/FLOCSoft/flocs-lta.git
 ```
 
-after which `flocs-lta-search` and `flocs-lta-download`. Should be available.
+Afterwards, available commands can be seen via `flocs-lta --help`.
