@@ -179,7 +179,9 @@ class ObservationStager:
         query &= Observation.isValid == 1
         query &= Observation.observationId == obsid
         if not len(query):
-            logger.warning("No Observation found, trying AveragingPipeline")
+            logger.warning(
+                f"No Observation with identifier {obsid} found, trying AveragingPipeline"
+            )
             if project == "ALL":
                 query = AveragingPipeline.select_all()
             else:
@@ -187,56 +189,56 @@ class ObservationStager:
             query &= AveragingPipeline.isValid == 1
             query &= AveragingPipeline.observationId == obsid
             if not len(query):
-                logger.critical("No AveragingPipeline products found.")
+                logger.critical("No valid AveragingPipeline products found either.")
                 sys.exit(0)
         observations = list(query)
-        if observations:
-            logger.info(f"== {len(observations)} target observation(s) found ==")
-            self.target = observations[0]
-            sapid = ""
-            if type(self.target) is AveragingPipeline:
-                sapid = self.target.sourceData[0].subArrayPointingIdentifier
-                self.target = self.target.sourceData[0].observations[0]
-            self.obsid = self.target.observationId
-            self.project = self.target.get_project()
-            print_observation_details(self.target, sapi=sapid)
 
-            uris = set()
-            self.obsid = self.target.observationId
-            self.project = self.target.get_project()
+        logger.info(f"== {len(observations)} target observation(s) found ==")
+        self.target = observations[0]
+        sapid = ""
+        if type(self.target) is AveragingPipeline:
+            sapid = self.target.sourceData[0].subArrayPointingIdentifier
+            self.target = self.target.sourceData[0].observations[0]
+        self.obsid = self.target.observationId
+        self.project = self.target.get_project()
+        print_observation_details(self.target, sapi=sapid)
 
-            if self.get_surls:
-                logger.info("Obtaining SURLs for dataproducts")
-                dataproducts = CorrelatedDataProduct.isValid == 1
-                if sapid:
-                    dataproducts &= (
-                        CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                        == sapid
-                    )
-                # SubArrayPointing identifier will already uniquely identify the beam.
-                if self.obsid and not sapid:
-                    dataproducts = (
-                        CorrelatedDataProduct.observation.observationId == self.obsid
-                    )
-                if minfreq:
-                    dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
-                if maxfreq:
-                    dataproducts &= CorrelatedDataProduct.maximumFrequency <= maxfreq
-                for dp in dataproducts:
-                    fo = (
-                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
-                    ).max("creation_date")
-                    if fo is not None:
-                        uris.add(fo.URI)
-                logger.info(f"Found {len(uris)} CorrelatedDataProducts")
-                self.target_uris = uris
-                if not self.target_uris:
-                    logger.critical("No valid URIs found for dataproducts.")
-                    sys.exit(0)
-                with open(f"{self.srm_prefix}.txt", "w") as f:
-                    for uri in sorted(uris):
-                        print(uri)
-                        f.write(uri + "\n")
+        uris = set()
+        self.obsid = self.target.observationId
+        self.project = self.target.get_project()
+
+        if self.get_surls:
+            logger.info("Obtaining SURLs for dataproducts")
+            dataproducts = CorrelatedDataProduct.isValid == 1
+            if sapid:
+                dataproducts &= (
+                    CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
+                    == sapid
+                )
+            # SubArrayPointing identifier will already uniquely identify the beam.
+            if self.obsid and not sapid:
+                dataproducts = (
+                    CorrelatedDataProduct.observation.observationId == self.obsid
+                )
+            if minfreq:
+                dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
+            if maxfreq:
+                dataproducts &= CorrelatedDataProduct.maximumFrequency <= maxfreq
+            for dp in dataproducts:
+                fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
+                    "creation_date"
+                )
+                if fo is not None:
+                    uris.add(fo.URI)
+            logger.info(f"Found {len(uris)} CorrelatedDataProducts")
+            self.target_uris = uris
+            if not self.target_uris:
+                logger.critical("No valid URIs found for dataproducts.")
+                sys.exit(0)
+            with open(f"{self.srm_prefix}.txt", "w") as f:
+                for uri in sorted(uris):
+                    print(uri)
+                    f.write(uri + "\n")
 
     def stage_calibrators(self) -> int:
         logger.info("Staging calibrator data")
