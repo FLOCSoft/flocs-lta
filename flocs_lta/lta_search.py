@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # pyright: reportOperatorIssue=none,reportAttributeAccessIssue=none
-from os import close
 import sys
 from datetime import timedelta
 from typing import Optional
 
 import astropy.units as u
-import numpy as np
+import structlog
 from astropy.coordinates import SkyCoord
 from awlofar.database.Context import context
 from awlofar.main.aweimports import (
@@ -18,14 +17,16 @@ from awlofar.main.aweimports import (
 )
 from stager_access import stage
 
+logger = structlog.getLogger()
 
-def print_observation_details(obs):
+
+def print_observation_details(obs, sapi: str = ""):
     print(f"Project: {obs.get_project()}")
     print(f"SAS ID: {obs.observationId}")
-    try:
-        print(f"SAPI: {obs.subArrayPointingIdentifier}")
-    except AttributeError:
-        pass
+    if len(obs.subArrayPointings) == 1:
+        print(f"SAPI: {obs.subArrayPointings[0].subArrayPointingIdentifier}")
+    elif sapi:
+        print(f"SAPI: {sapi}")
     print(f"Start time: {obs.startTime}")
     print(f"End time: {obs.endTime}")
     print(f"Duration: {obs.duration} s")
@@ -36,6 +37,8 @@ def print_observation_details(obs):
 class ObservationStager:
     def __init__(self, get_surls: bool = False):
         self.get_surls = get_surls
+        self.sapid = None
+        self.srm_prefix = ""
 
     def find_observation_by_position(
         self,
@@ -67,7 +70,7 @@ class ObservationStager:
                 & (SubArrayPointing.pointing.declination < dec + 5)
             )
         )
-        print(f"Found {len(query)} potential SubArrayPointings.")
+        logger.info(f"Found {len(query)} potential SubArrayPointings.")
         target = None
         if True:
             num_observations = 0
@@ -115,7 +118,7 @@ class ObservationStager:
                             dataproducts &= (
                                 CorrelatedDataProduct.maximumFrequency <= maxfreq
                             )
-                        print(f"Found {len(dataproducts)} CorrelatedDataProducts")
+                        logger.info(f"Found {len(dataproducts)} CorrelatedDataProducts")
                         if len(dataproducts):
                             num_observations += 1
                         if self.get_surls:
@@ -128,7 +131,7 @@ class ObservationStager:
                                     if fo is not None:
                                         uris.add(fo.URI)
                                 if not uris:
-                                    print(
+                                    logger.critical(
                                         "No stageable data matching filter criteria found."
                                     )
                                 else:
@@ -140,8 +143,8 @@ class ObservationStager:
                 else:
                     continue
 
-            if num_observations == 0 and len(dataproducts) == 0:
-                print(
+            if num_observations == 0:
+                logger.critical(
                     "No observations containing the target within specified parameters found."
                 )
             elif num_observations == 1:
@@ -150,7 +153,7 @@ class ObservationStager:
                 self.target = target
                 self.target_uris = uris
             else:
-                print(
+                logger.warning(
                     "Multiple observations found, please manually stage preferred one."
                 )
                 sys.exit(0)
@@ -163,6 +166,8 @@ class ObservationStager:
         minfreq: Optional[float] = None,
         maxfreq: Optional[float] = None,
     ):
+        self.sapid = sapid
+        self.srm_prefix = f"srms_{obsid}"
         context.set_project(project)
         if context.get_current_project().name != project:
             raise ValueError(f"No permissions for project {project}")
@@ -174,67 +179,77 @@ class ObservationStager:
         query &= Observation.isValid == 1
         query &= Observation.observationId == obsid
         if not len(query):
-            print(f"No Observation with SAS ID {obsid}, trying AveragingPipeline")
+            logger.warning(
+                f"No Observation with identifier {obsid} found, trying AveragingPipeline"
+            )
             if project == "ALL":
                 query = AveragingPipeline.select_all()
             else:
                 query = AveragingPipeline.select_all().project_only(project)
             query &= AveragingPipeline.isValid == 1
             query &= AveragingPipeline.observationId == obsid
+            if not len(query):
+                logger.critical("No valid AveragingPipeline products found either.")
+                sys.exit(0)
         observations = list(query)
-        if observations:
-            print(f"== {len(observations)} target observation(s) found ==")
-            self.target = observations[0]
-            if type(self.target) is AveragingPipeline:
-                sapid = self.target.sourceData[0].subArrayPointingIdentifier
-                # self.target = self.target.sourceData[0].observation is None for some reason; don't use
-                self.target = self.target.sourceData[0].observations[0]
-            self.obsid = self.target.observationId
-            self.project = self.target.get_project()
-            print_observation_details(self.target)
 
-            uris = set()
-            self.obsid = self.target.observationId
-            self.project = self.target.get_project()
+        logger.info(f"== {len(observations)} target observation(s) found ==")
+        self.target = observations[0]
+        sapid = ""
+        if type(self.target) is AveragingPipeline:
+            sapid = self.target.sourceData[0].subArrayPointingIdentifier
+            self.target = self.target.sourceData[0].observations[0]
+        self.obsid = self.target.observationId
+        self.project = self.target.get_project()
+        print_observation_details(self.target, sapi=sapid)
 
-            if self.get_surls:
-                print("Obtaining SURLs for dataproducts")
-                if sapid:
-                    dataproducts = CorrelatedDataProduct.isValid == 1
-                    dataproducts &= (
-                        CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
-                        == sapid
-                    )
-                elif obsid and (not sapid):
-                    dataproducts = (
-                        CorrelatedDataProduct.observation.observationId == obsid
-                    )
-                if minfreq:
-                    dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
-                if maxfreq:
-                    dataproducts &= CorrelatedDataProduct.maximumFrequency <= maxfreq
-                print(f"Found {len(dataproducts)} CorrelatedDataProducts")
-                for dp in dataproducts:
-                    fo = (
-                        (FileObject.data_object == dp) & (FileObject.isValid > 0)
-                    ).max("creation_date")
-                    if fo is not None:
-                        uris.add(fo.URI)
-                self.target_uris = uris
-                with open(f"srms_{self.target.observationId}.txt", "w") as f:
-                    for uri in sorted(uris):
-                        f.write(uri + "\n")
+        uris = set()
+        self.obsid = self.target.observationId
+        self.project = self.target.get_project()
+
+        if self.get_surls:
+            logger.info("Obtaining SURLs for dataproducts")
+            dataproducts = CorrelatedDataProduct.isValid == 1
+            if sapid:
+                dataproducts &= (
+                    CorrelatedDataProduct.subArrayPointing.subArrayPointingIdentifier
+                    == sapid
+                )
+            # SubArrayPointing identifier will already uniquely identify the beam.
+            if self.obsid and not sapid:
+                dataproducts = (
+                    CorrelatedDataProduct.observation.observationId == self.obsid
+                )
+            if minfreq:
+                dataproducts &= CorrelatedDataProduct.minimumFrequency >= minfreq
+            if maxfreq:
+                dataproducts &= CorrelatedDataProduct.maximumFrequency <= maxfreq
+            for dp in dataproducts:
+                fo = ((FileObject.data_object == dp) & (FileObject.isValid > 0)).max(
+                    "creation_date"
+                )
+                if fo is not None:
+                    uris.add(fo.URI)
+            logger.info(f"Found {len(uris)} CorrelatedDataProducts")
+            self.target_uris = uris
+            if not self.target_uris:
+                logger.critical("No valid URIs found for dataproducts.")
+                sys.exit(0)
+            with open(f"{self.srm_prefix}.txt", "w") as f:
+                for uri in sorted(uris):
+                    print(uri)
+                    f.write(uri + "\n")
 
     def stage_calibrators(self) -> int:
-        print("Staging calibrator data")
+        logger.info("Staging calibrator data")
         id = stage(list(self.calibrator_uris))
-        print(f"Staging request submitted with staging ID {id}")
+        logger.info(f"Staging request submitted with staging ID {id}")
         return id
 
     def stage_target(self) -> int:
-        print("Staging target data")
+        logger.info("Staging target data")
         id = stage(list(self.target_uris))
-        print(f"Staging request submitted with staging ID {id}")
+        logger.info(f"Staging request submitted with staging ID {id}")
         return id
 
     def find_nearest_calibrators(
@@ -243,7 +258,7 @@ class ObservationStager:
         minfreq: Optional[float] = None,
         maxfreq: Optional[float] = None,
     ):
-        print("Searching for nearest calibrators.")
+        logger.info("Searching for nearest calibrators.")
         dt_obs = timedelta(seconds=self.target.duration)
         dt = timedelta(hours=168)
 
@@ -254,12 +269,13 @@ class ObservationStager:
         obs_queries &= Observation.duration < 3600
         obs_queries &= Observation.observationId != self.target.observationId
 
+        logger.info(f"Identified {len(obs_queries)} potential calibrators.")
         calibrators = list(obs_queries)
         closest_calibrators = sorted(
             calibrators, key=lambda cal: abs(cal.startTime - self.target.startTime)
-        )
+        )[:n_calibrators]
         for i, cal in enumerate(closest_calibrators, start=1):
-            print(f"== Closest calibrator #{i} ==")
+            logger.info(f"== Closest calibrator #{i} ==")
             print_observation_details(cal)
         if self.get_surls:
             for cal in closest_calibrators:
@@ -280,8 +296,10 @@ class ObservationStager:
                     if fo is not None:
                         uris.add(fo.URI)
                 self.calibrator_uris = uris
-                with open(
-                    f"srms_{self.target.observationId}_calibrators.txt", "w"
-                ) as f:
+                if self.srm_prefix:
+                    fname = self.srm_prefix + "_calibrators.txt"
+                else:
+                    fname = f"srms_{self.target.observationId}_calibrators.txt"
+                with open(fname, "w") as f:
                     for uri in sorted(uris):
                         f.write(uri + "\n")

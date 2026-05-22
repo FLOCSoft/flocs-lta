@@ -66,6 +66,10 @@ def search_id(
         str,
         Parameter(help="LTA project to limit searches to."),
     ] = "ALL",
+    min_duration: Annotated[
+        Optional[float],
+        Parameter(help="Minimum duration in hours an observation must be."),
+    ] = 0.0,
     sapi: Annotated[
         Optional[str],
         Parameter(
@@ -75,11 +79,11 @@ def search_id(
     freq_start: Annotated[
         Optional[float],
         Parameter(help="Lower limit to which frequency subbands to select."),
-    ] = False,
+    ] = None,
     freq_end: Annotated[
         Optional[float],
         Parameter(help="Upper limit to which frequency subbands to select."),
-    ] = False,
+    ] = None,
     band: Annotated[
         Literal["HBA", "LBA"],
         Parameter(help="General observing band to search for."),
@@ -140,11 +144,11 @@ def search_position(
     freq_start: Annotated[
         Optional[float],
         Parameter(help="Lower limit to which frequency subbands to select."),
-    ] = False,
+    ] = None,
     freq_end: Annotated[
         Optional[float],
         Parameter(help="Upper limit to which frequency subbands to select."),
-    ] = False,
+    ] = None,
     get_surls: Annotated[
         bool,
         Parameter(help="Dump a text file with SURLs for files to be used for staging."),
