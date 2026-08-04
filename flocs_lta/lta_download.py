@@ -45,7 +45,7 @@ def is_valid_ms(ms_path: str):
             cols = set(tab.colnames())
 
             for rt in required_subtables:
-                if rt not in tab.colnames():
+                if rt not in tab.fieldnames():
                     print(f"Required table {rt} not found in MS.")
                     is_valid = False
                 # Touch one data cell where possible to catch truncated payloads
