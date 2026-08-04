@@ -57,7 +57,7 @@ def is_valid_ms(ms_path: str):
 
                 for sub in required_subtables:
                     sub_path = f"{ms_path.rstrip("/")}::{sub}"
-                    with tab.table(sub_path, readonly=True, ack=False) as st:
+                    with ct.table(sub_path, readonly=True, ack=False) as st:
                         if not st.nrows():
                             print(f"Sub table {sub} has no rows.")
                             is_valid = False
