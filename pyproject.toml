@@ -7,7 +7,7 @@ name = "flocs-lta"
 version = "1.0.0"
 description = ""
 requires-python = ">3.9"
-dependencies = ["astropy", "cyclopts", "structlog"]
+dependencies = ["astropy", "cyclopts", "isodate", "structlog"]
 
 [project.scripts]
 flocs-lta = "flocs_lta.flocs_lta:main"
