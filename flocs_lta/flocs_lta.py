@@ -51,7 +51,6 @@ def download(
             dl.download_all(
                 parallel_downloads,
                 extract=extract,
-                verification=verification,
                 outdir=outdir,
             )
 
