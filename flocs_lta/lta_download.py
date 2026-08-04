@@ -108,7 +108,7 @@ class Downloader:
         sasid = url.split("/")[-1].split("_")[0]
         outdir_full = os.path.join(os.path.abspath(outdir), sasid)
         try:
-            os.mkdir(outdir_full)
+            os.makedirs(outdir_full)
         except FileExistsError:
             pass
         outname = os.path.join(outdir_full, url.split("/")[-1])
