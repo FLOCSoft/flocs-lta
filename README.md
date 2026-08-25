@@ -28,7 +28,16 @@ Go to https://www.oracle.com/database/technologies/instant-client/linux-x86-64-d
 
 ## Setting up the enviornment for interacting with the LTA
 
-To use flocs-lta, we need set up interaction with the StageIt service and with the LTA database. First make a file under `$HOME/.stagingrc` with your username and StageIt token. This will be used for downloading data. Next, configure your AWE environment by editing `$HOME/.awe/Environment.cfg`. Set `database_user` and `database_password` to your LTA credenditals, and add an entry for `database_api` set to `oracledb-thin` (or modify it if it h as been defined already).
+To use flocs-lta, we need set up interaction with the StageIt service and with the LTA database. First make a file under `$HOME/.stagingrc` with your username and StageIt token. This file should look like
+
+```
+hostname=sdc.astron.nl
+api_token=<stageit token>
+```
+
+To obtain your StageIt token, go to [https://sdc.astron.nl/stageit/](https://sdc.astron.nl/stageit/), click on your user name and then "Request token". This will be used for downloading data.
+
+Next, configure your AWE environment by editing `$HOME/.awe/Environment.cfg`. Set `database_user` and `database_password` to your LTA credenditals, and add an entry for `database_api` set to `oracledb-thin` (or modify it if it h as been defined already). 
 
 ## Installing flocs-lta
 
