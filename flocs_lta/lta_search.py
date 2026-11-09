@@ -7,14 +7,6 @@ from typing import Optional
 import astropy.units as u
 import structlog
 from astropy.coordinates import SkyCoord
-from awlofar.database.Context import context
-from awlofar.main.aweimports import (
-    AveragingPipeline,
-    CorrelatedDataProduct,
-    FileObject,
-    Observation,
-    SubArrayPointing,
-)
 from stager_access import stage
 
 logger = structlog.getLogger()
@@ -36,6 +28,16 @@ def print_observation_details(obs, sapi: str = ""):
 
 class ObservationStager:
     def __init__(self, get_surls: bool = False):
+        global context, AveragingPipeline, CorrelatedDataProduct, FileObject, Observation, SubArrayPointing
+        from awlofar.database.Context import context
+        from awlofar.main.aweimports import (
+            AveragingPipeline,
+            CorrelatedDataProduct,
+            FileObject,
+            Observation,
+            SubArrayPointing,
+        )
+        
         self.get_surls = get_surls
         self.sapid = None
         self.srm_prefix = ""
