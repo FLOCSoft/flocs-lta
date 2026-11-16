@@ -5,9 +5,28 @@ from datetime import timedelta
 from typing import Optional
 
 import astropy.units as u
+import oracledb
 import structlog
 from astropy.coordinates import SkyCoord
 from stager_access import stage
+
+try:
+    from awlofar.database.Context import context
+    from awlofar.main.aweimports import (
+        AveragingPipeline,
+        CorrelatedDataProduct,
+        FileObject,
+        Observation,
+        SubArrayPointing,
+    )
+except oracledb.OperationalError as exc:
+    (error_obj,) = exc.args
+    if error_obj.full_code != "DPY-6005":
+        raise
+    _lta_connection_error = exc
+    print("Cannot connect to the LTA. Searching and staging are not available.")
+else:
+    _lta_connection_error = None
 
 logger = structlog.getLogger()
 
@@ -28,16 +47,9 @@ def print_observation_details(obs, sapi: str = ""):
 
 class ObservationStager:
     def __init__(self, get_surls: bool = False):
-        global context, AveragingPipeline, CorrelatedDataProduct, FileObject, Observation, SubArrayPointing
-        from awlofar.database.Context import context
-        from awlofar.main.aweimports import (
-            AveragingPipeline,
-            CorrelatedDataProduct,
-            FileObject,
-            Observation,
-            SubArrayPointing,
-        )
-        
+        if _lta_connection_error is not None:
+            raise _lta_connection_error
+
         self.get_surls = get_surls
         self.sapid = None
         self.srm_prefix = ""
